@@ -14,7 +14,7 @@ def progress_callback(progress_info, progress_data):
         print(f"Progress data: {progress_data}")
 
 def main():
-    aki = Aki('xtts', '181e35ac-7b7d-4bfe-9f12-153757ec3952')
+    aki = Aki('xttsv2', 'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37')
 
     params = {
         "text": "Hello! This is a example of text to speech.",

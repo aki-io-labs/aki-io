@@ -19,7 +19,7 @@ def generate_image():
     # Call the AKI API
     result = do_aki_request(
         endpoint_name='qwen_image',
-        api_key='181e35ac-7b7d-4bfe-9f12-153757ec3952',
+        api_key='fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37',
         params,
     )
 

@@ -4,7 +4,7 @@ const fs = require('fs');
 // Configuration
 const CONFIG = {
     ENDPOINT: 'xtts',
-    API_KEY: '181e35ac-7b7d-4bfe-9f12-153757ec3952',
+    API_KEY: 'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37',
     OUTPUT_FILE: 'generated_speech.mp3'
 };
 

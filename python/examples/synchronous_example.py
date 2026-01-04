@@ -2,7 +2,7 @@ import json
 from aki_io import Aki
 
 def main():
-    aki = Aki('llama3_chat', '181e35ac-7b7d-4bfe-9f12-153757ec3952')
+    aki = Aki('llama3_8b_chat', 'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37')
 
     chat_context = [
         {"role": "user", "content": "Hi! How are you?"},

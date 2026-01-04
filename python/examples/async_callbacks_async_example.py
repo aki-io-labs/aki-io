@@ -12,7 +12,7 @@ async def progress_error_callback(error_description):
     print("Async error:", error_description)
 
 async def main():
-    aki = Aki('llama3_8b_chat', '181e35ac-7b7d-4bfe-9f12-153757ec3952')
+    aki = Aki('llama3_8b_chat', 'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37')
     await aki.do_api_login_async()
 
     chat_context = [
