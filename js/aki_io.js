@@ -54,7 +54,7 @@ class Aki {
      */
     async fetchAuthKey() {
         
-        const response = await this.fetchAsync(`${this.apiServerUrl}login/${this.endpointName}?key=${this.apiKey}&version=${encodeURIComponent(AkiIO.version)}`);
+        const response = await this.fetchAsync(`${this.apiServerUrl}login/${this.endpointName}?key=${this.apiKey}&version=${encodeURIComponent(Aki.version)}`);
         
         if (response.success) {
             return response.client_session_auth_key;
@@ -104,7 +104,7 @@ class Aki {
         }
         try {
                 const response = await this.fetchAsync(
-                    `${this.apiServerUrl}validate_key?key=${this.apiKey}&version=${encodeURIComponent(AkiAPI.version)}`, false
+                    `${this.apiServerUrl}validate_key?key=${this.apiKey}&version=${encodeURIComponent(Aki.version)}`, false
                 );
                 if (response.success) {
                     if (resultCallback && typeof resultCallback === 'function') {
@@ -338,13 +338,13 @@ class Aki {
  * @param {function} [progressCallback=null] - The callback for progress updates.
  */
 function doAPIRequest(endpointName, params, resultCallback, apiKey = null, progressCallback = null) {
-    const model = new AkiAPI(endpointName, apiKey);
+    const model = new Aki(endpointName, apiKey);
     model.initAPIKey((data) => {
         model.doAPIRequest(params, resultCallback, progressCallback);
     });
 }
 
-// Export the AkiIclass and doAPIRequest function for Node.js only to avoid the console error in browsers
+// Export the Aki class and doAPIRequest function for Node.js only to avoid the console error in browsers
 if (typeof module !== "undefined") {
     module.exports = { Aki, doAPIRequest };
 }
