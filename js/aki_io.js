@@ -10,7 +10,7 @@
  */
 class Aki {
 
-    static version = 'JavaScript AKI.IO API Interface 1.0.0';
+    static version = 'JavaScript AKI.IO API Client Interface 1.0.0';
     
     /**
     * Constructor of the class.
