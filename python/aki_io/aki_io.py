@@ -9,7 +9,7 @@ import base64
 import asyncio
 import requests
 import time
-import pkg_resources
+# import pkg_resources
 import json
 
 
@@ -110,7 +110,7 @@ class Aki():
         """        
         self.api_key = api_key or self.api_key
         url = f'{self.api_server_url}validate_key'
-        params = {'version': ModelAPI.get_version(), 'key': self.api_key}
+        params = {'version': Aki.get_version(), 'key': self.api_key}
         self.setup_session(session)
         try:
             async with self.session.get(url=url, params=params) as response:
@@ -132,10 +132,10 @@ class Aki():
 
         Returns:
             dict: API key validation response from Server. Example: {'success': True, 'error': None}
-        """        
+        """
         self.api_key = api_key or self.api_key
         url = f'{self.api_server_url}validate_key'
-        params = {'version': ModelAPI.get_version(), 'key': self.api_key}
+        params = {'version': Aki.get_version(), 'key': self.api_key}
         try:
             response = requests.get(url=url, params=params)
 
@@ -164,7 +164,7 @@ class Aki():
                 Accepts synchronous functions and asynchrouns couroutines. Defaults to None.
             error_callback (callable or coroutine), Callback function or coroutine for catching errors obtaining client_session_auth_key. 
                 Accepts synchronous functions and asynchrouns couroutines. Prevents ConnectionError. Defaults to None.
-            session (aiohttp.ClientSession): Give existing session to ModelApi API to make login request in given session. Defaults to None.
+            session (aiohttp.ClientSession): Give existing session to Aki API to make login request in given session. Defaults to None.
 
         Raises:
             ConnectionError: If there is a connection issue with the API server and no error_callback given.
@@ -227,7 +227,7 @@ class Aki():
                 Prevents ConnectionErrors during Transmitting. Defaults to None.
             progress_interval (int, optional): Interval in seconds at which progress is checked. Default is {DEFAULT_PROGRESS_INTERVAL}.
             progress_stream (bool, optional): Not implemented yet
-            session (aiohttp.ClientSession): Give existing session to ModelApi API to make login request in given session. Defaults to None.
+            session (aiohttp.ClientSession): Give existing session to Aki API to make login request in given session. Defaults to None.
 
         Raises:
             ConnectionError: Raised if client couldn't connect with API sserver and no request_error_callback is given. Also raised if client lost 
@@ -324,7 +324,7 @@ class Aki():
         Args:
             params (dict): Dictionary with parameters for the the API request.
             progress_interval (int, optional): Interval in seconds at which progress is checked. Defaults to DEFAULT_PROGRESS_INTERVAL.
-            session (aiohttp.ClientSession): Give existing session to ModelApi API to make login request in given session. Defaults to None.
+            session (aiohttp.ClientSession): Give existing session to Aki API to make login request in given session. Defaults to None.
             output_format (str, optional): Define a different output_format. Defaults to 'base64'.
 
         Yields:
@@ -691,7 +691,7 @@ class Aki():
         """Open a new session if session is
 
         Args:
-            session (aiohttp.ClientSession): Give existing session to ModelApi API to make upcoming requests in given session.
+            session (aiohttp.ClientSession): Give existing session to Aki API to make upcoming requests in given session.
         """        
         if session:
             self.session = session
@@ -700,7 +700,7 @@ class Aki():
 
     async def close_session(self):
         """
-        Close the aiohttp client session saved in ModelApi().session.
+        Close the aiohttp client session saved in Aki().session.
         """
         if self.session:
             await self.session.close()
@@ -743,23 +743,26 @@ class Aki():
             return False
 
 
+    __package_version = None # will be set by get_version()
+
+
     @staticmethod
     def get_version():
-        """Parses name and version of AKI.IO API Interface with pkg_resources
+        """Get name and package version of AKI.IO Client Interface
 
         Returns:
-            str: Name and version of AKI.IO API Interface
-        """        
-        try:
-            version = 'Python ' + str(pkg_resources.get_distribution("aki_io"))
-        except pkg_resources.DistributionNotFound: # If package is not installed via pip
+            str: Name and version of AKI.IO Interface
+        """
+
+        if not Aki.__package_version:
             import re
             from pathlib import Path
             setup_py = Path(__file__).resolve().parent.parent / 'setup.py'
             with open(setup_py, 'r') as file:                
                 version_no = re.search(r"version\s*=\s*'(.*)'\s*,\s*\n", file.read()).group(1)
-            version = f'Python AKI.IO Client Interface {version_no}'
-        return version
+            Aki.__package_version = f'Python AKI.IO Client {version_no}'
+        
+        return Aki.__package_version
 
 
     async def __finish_api_request_while_receiving_progress_async(
@@ -989,7 +992,7 @@ class Aki():
             
         """
         url = f'{self.api_server_url}login/{self.endpoint_name}'
-        params = {'version': ModelAPI.get_version(), 'key': api_key}
+        params = {'version': Aki.get_version(), 'key': api_key}
         try:
             async with self.session.get(url=url, params=params) as response:
                 response_json = await response.json()
@@ -1010,7 +1013,7 @@ class Aki():
             str: The client session authentication key.
         """
         url = f'{self.api_server_url}login/{self.endpoint_name}/'
-        params = {'version': ModelAPI.get_version(), 'key': api_key}
+        params = {'version': Aki.get_version(), 'key': api_key}
         try:
             response = requests.get(url=url, params=params)
 
@@ -1378,7 +1381,7 @@ class Aki():
         Returns:
             str, bytes or object: Base64 string bytes string or python object, depending on self.output_format.
         """
-        if ModelAPI.check_if_valid_base64_string(value):
+        if Aki.check_if_valid_base64_string(value):
             if self.output_format == 'byte_string':
                 return base64.b64decode(value.split(',')[1].encode('utf-8'))
             else:
@@ -1458,7 +1461,7 @@ async def do_aki_request_async(
             for catching request errors. Defaults to None.
         progress_error_callback (callable or coroutine, optional): Callback function with arguments error_description (str) for catching 
             progress errors with successful initial request. Accepts synchronous functions and asynchrouns couroutines. Defaults to None.
-        session (aiohttp.ClientSession): Give existing session to ModelApi API to make login request in given session. Defaults to None.
+        session (aiohttp.ClientSession): Give existing session to Aki API to make login request in given session. Defaults to None.
 
     Returns:
         dict: Dictionary with request result parameters.
