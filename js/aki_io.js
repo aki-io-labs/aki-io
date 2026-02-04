@@ -47,28 +47,6 @@ class Aki {
     }
 
     /**
-     * Method for retrieving the authentication key.
-     * @async
-     * @param {string} endpointName - The name of the API endpoint.
-     * @returns {string} - The authentication key if successful
-     */
-    async fetchAuthKey() {
-        
-        const response = await this.fetchAsync(`${this.apiServerUrl}login/${this.endpointName}?key=${this.apiKey}&version=${encodeURIComponent(Aki.version)}`);
-        
-        if (response.success) {
-            return response.client_session_auth_key;
-        }
-        else {
-            var errorMessage = `${response.error}`
-            if (response.ep_version) {
-                errorMessage += ` Endpoint version: ${response.ep_version}`
-            }
-            throw new Error(errorMessage)
-        }
-    }
-
-    /**
      * Method for asynchronous HTTP requests (GET and POST).
      * @async
      * @param {string} url - The URL of the request.
@@ -125,33 +103,6 @@ class Aki {
             } 
         catch (error) {
             console.error('Error during API Key Validation:', error);
-            if (errorCallback && typeof errorCallback === 'function') {
-                errorCallback(error);
-            }
-        }
-    }
-
-    /**
-     * Method for API login.
-     * @async
-     * @param {function} [resultCallback=null] - The callback after successful login.
-     * @param {sting} apiKey - optional: set to new api Key required to authenticate and authorize to use api endpoint
-     * 
-     */
-    async doAPILogin(resultCallback = null, errorCallback = null, apiKey = null) {
-        if (apiKey != null) {
-            this.apiKey = apiKey;
-        }
-        try {
-            const authKey = await this.fetchAuthKey();
-            this.clientSessionAuthKey = authKey;
-            console.log(`Login successful. Got API Key: ${this.clientSessionAuthKey}`);
-            if (resultCallback && typeof resultCallback === 'function') {
-                resultCallback(authKey);
-            }
-        } 
-        catch (error) {
-            console.error('Error during API login:', error);
             if (errorCallback && typeof errorCallback === 'function') {
                 errorCallback(error);
             }

@@ -148,56 +148,6 @@ class Aki():
             return self.__error_handler_sync(error, 'key_validation', None)
 
 
-    async def do_api_login_async(
-        self,
-        api_key=None,
-        result_callback=None,
-        error_callback=None,
-        session=None
-        ):
-        """
-        Asynchronous client login to API server and obtain an authentication api_key.
-
-        Args:
-            api_key (str): The api_key, register for your api key at https://aki.io
-            result_callback (callable or coroutine): Callback function or coroutine with the obtained client_session_auth_key as argument. 
-                Accepts synchronous functions and asynchrouns couroutines. Defaults to None.
-            error_callback (callable or coroutine), Callback function or coroutine for catching errors obtaining client_session_auth_key. 
-                Accepts synchronous functions and asynchrouns couroutines. Prevents ConnectionError. Defaults to None.
-            session (aiohttp.ClientSession): Give existing session to Aki API to make login request in given session. Defaults to None.
-
-        Raises:
-            ConnectionError: If there is a connection issue with the API server and no error_callback given.
-
-        Returns:
-            str: Client session authentication key
-        """
-        api_key = api_key or self.api_key
-        self.setup_session(session)
-        self.client_session_auth_key = await self.__fetch_auth_key_async(api_key, error_callback)
-        return self.client_session_auth_key
-        
-
-    def do_api_login(self,
-        api_key=None
-        ):
-        """
-        Client login to API server and obtain an authentication key.
-
-        Args:
-            api_key (str): The api_key, register for your AKI api key at https://aki.io
-
-        Raises:
-            ConnectionError: If there is a connection issue with the API server.
-
-        Returns:
-            str: Client session authentication key
-        """
-        api_key = api_key or self.api_key
-        self.client_session_auth_key = self.__fetch_auth_key(api_key)
-        return self.client_session_auth_key
-
-
     async def do_api_request_async(
         self,
         params,
@@ -977,53 +927,6 @@ class Aki():
       
         except requests.exceptions.ConnectionError as error:
             return self.__error_handler_sync(error, 'API request')
-
-
-    async def __fetch_auth_key_async(self, api_key, error_callback):
-        """
-        Asynchronous retrieve of client session authentication key via route /login.
-
-        Args:
-            error_callback (callable or coroutine, optional): Callback function or coroutine with argument error_description (str) for catching 
-                errors. Accepts synchronous functions and asynchrouns couroutines. Defaults to None.
-
-        Returns:
-            str: The client session authentication key.
-            
-        """
-        url = f'{self.api_server_url}login/{self.endpoint_name}'
-        params = {'version': Aki.get_version(), 'key': api_key}
-        try:
-            async with self.session.get(url=url, params=params) as response:
-                response_json = await response.json()
-                if response.status == 200 and response_json.get('success'):
-                    return response_json.get('client_session_auth_key')
-                else:
-                    return await self.__error_handler_async(response, 'login', error_callback)
-
-        except aiohttp.client_exceptions.ClientConnectorError as error:
-            return await self.__error_handler_async(error, 'login', error_callback)
-
-
-    def __fetch_auth_key(self, api_key):
-        """
-        Synchronous retrieve of client session authentication key via route /login.
-
-        Returns:
-            str: The client session authentication key.
-        """
-        url = f'{self.api_server_url}login/{self.endpoint_name}/'
-        params = {'version': Aki.get_version(), 'key': api_key}
-        try:
-            response = requests.get(url=url, params=params)
-
-            if response.status_code == 200 and response.json().get('success'):
-                return response.json().get('client_session_auth_key')
-            else:
-                return self.__error_handler_sync(response, 'login', None)
-
-        except requests.exceptions.ConnectionError as error:
-            return self.__error_handler_sync(error, 'login', None)
 
 
     async def __fetch_progress_async(self, job_id, progress_error_callback=None):
