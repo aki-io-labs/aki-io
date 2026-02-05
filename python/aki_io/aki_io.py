@@ -164,7 +164,6 @@ class Aki():
         result_callback=None,
         progress_callback=None,
         progress_interval=DEFAULT_PROGRESS_INTERVAL,
-        progress_stream=False,
         session=None,
         output_format='base64'
         ):
@@ -178,7 +177,6 @@ class Aki():
             progress_callback (callable or coroutine, optional): Callback function or coroutine with arguments progress_info (dict) and 
                 progress_data (dict) for tracking progress. Accepts synchronous functions and asynchrouns couroutines. Default is None.
             progress_interval (int, optional): Interval in seconds at which progress is checked. Default is {DEFAULT_PROGRESS_INTERVAL}.
-            progress_stream (bool, optional): Not implemented yet
             session (aiohttp.ClientSession): Give existing session to Aki API to make login request in given session. Defaults to None.
 
         Raises:
@@ -243,17 +241,12 @@ class Aki():
                     'estimate': -1
                 }
                 await if_async_else_run(progress_callback, init_progress_info, None)
-
-                if progress_stream:
-                    raise NotImplementedError()
-                    await self.__do_progress_stream(result_callback, progress_callback)
-                else:
-                    return await self.__finish_api_request_while_receiving_progress_async(
-                        job_id,
-                        result_callback,
-                        progress_callback,
-                        progress_interval
-                    )
+                return await self.__finish_api_request_while_receiving_progress_async(
+                    job_id,
+                    result_callback,
+                    progress_callback,
+                    progress_interval
+                )
             else:
                 await if_async_else_run(result_callback, result)
         else:
@@ -371,8 +364,7 @@ class Aki():
         self,
         params,
         progress_callback=None,
-        progress_interval=DEFAULT_PROGRESS_INTERVAL,
-        progress_stream=None
+        progress_interval=DEFAULT_PROGRESS_INTERVAL
         ):
         """
         Do an synchronous API request with optional progress data via callbacks. 
@@ -382,7 +374,6 @@ class Aki():
             progress_callback (callable, optional): Callback function or coroutine with arguments  progress_info (dict) and 
                 progress_data (dict) for receiving progress data. Defaults to None.
             progress_interval (int, optional): Interval in seconds at which progress is checked. Default is 300.
-            progress_stream (int, optional): Not implemented yet
 
         Raises:
             ConnectionError: Raised if client couldn't connect with API server and raise_exceptions is True. 
@@ -445,16 +436,11 @@ class Aki():
                     'estimate': -1
                 }
                 progress_callback(init_progress_info, None)
-
-                if progress_stream:
-                    raise NotImplementedError()
-                    self.__do_progress_stream(result_callback, progress_callback)
-                else:
-                    result = self.__finish_api_request_while_receiving_progress_sync(
-                        job_id,
-                        progress_callback,
-                        progress_interval
-                    )
+                result = self.__finish_api_request_while_receiving_progress_sync(
+                    job_id,
+                    progress_callback,
+                    progress_interval
+                )
         else:
             result = self.__convert_result_params(result)
 
@@ -1305,33 +1291,6 @@ class Aki():
                         data_format = self.__get_data_format_from_byte_string(value)
                     params[key] = f'data:{self.output_type}/{data_format};base64,' + base64.b64encode(value).decode('utf-8')
         return params
-
-
-    def __do_progress_stream(self, result_callback, progress_callback):
-        """
-        Stream progress updates for running API request and handle progress events.
-        (Old untested implementation, functionality not guaranteed)
-
-        Args:
-            result_callback (callback): Callback function with job_result (dict) as argument to handle the API request result.
-            progress_callback (callback, optional): Callback function with arguments progress_info (dict) and progress_data (dict) for tracking progress. Defaults to None.
-        """
-        async def on_progress(event):
-            print('OnProgress:', event.data)
-            data = json.loads(event.data)
-            progress_info = {
-                'progress': data['progress'],
-                'queue_position': data['queue_position'],
-                'estimate': -1
-                            }
-            progress_callback(progress_info, data['progress_data'])
-            if data['job_state'] == "done":
-                await if_async_else_run(result_callback, data['job_result'])
-
-        event_source = self.session.ws_connect(
-            f'/stream_progress?client_session_auth_key={self.client_session_auth_key}'
-                                                        )
-        event_source.receive_json = on_progress
 
 
 async def do_aki_request_async(
