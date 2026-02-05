@@ -66,7 +66,16 @@ class Aki():
 
     """
 
-    def __init__(self, endpoint_name, api_key=None, session=None, output_format='base64', output_type = 'image', api_server="https://aki.io"):
+    def __init__(
+            self,
+            endpoint_name,
+            api_key=None,
+            session=None,
+            output_format='base64',
+            output_type = 'image',
+            api_server='https://aki.io',
+            raise_exceptions=False
+        ):
         
         """
         Constructor
@@ -80,6 +89,7 @@ class Aki():
                 Defaults to 'base64'.  
             output_type(str, optional): Output data type like "image" or "audio". Defaults to'image'.
             api_server (str, optional): The base URL of the API server
+            raise_exceptions (bool, optional): Whether to exceptions are raised in case of network errors . Defaults to False.
         """
         self.api_server = api_server
         self.api_server_url = api_server + "/api/"
@@ -89,6 +99,7 @@ class Aki():
         self.client_session_auth_key = None
         self.output_format = output_format
         self.output_type = output_type
+        self.raise_exceptions = raise_exceptions
         self.canceled_jobs = []
         self.progress_input_params = {} # key job_id
 
@@ -98,12 +109,11 @@ class Aki():
         await self.session.close()
 
 
-    async def init_api_key_async(self, api_key=None, error_callback=None, session=None):
+    async def init_api_key_async(self, api_key=None, session=None):
         """Initialize and validate api key.
 
         Args:
             api_key (str, optional): API key to be initiliazed and validated. Defaults to None.
-            error_callback (str, optional): Called in case of connection errors. Defaults to None.
 
         Returns:
             dict: API key validation response from Server. Example: {'success': True, 'error': None}
@@ -118,10 +128,10 @@ class Aki():
                 if response.status == 200:
                     return response_json
                 else:
-                    return await self.__error_handler_async(response, 'key_validation', error_callback)
+                    return await self.__handle_error_async(response, 'key_validation')
 
-        except aiohttp.client_exceptions.ClientConnectorError as error:
-            return await self.__error_handler_async(error, 'key_validation', error_callback)
+        except aiohttp.client_exceptions.ClientConnectorError as exception:
+            return await self.__handle_error_async(None, 'key_validation', exception=exception)
 
 
     def init_api_key(self, api_key=None):
@@ -142,10 +152,10 @@ class Aki():
             if response.status_code == 200:
                 return response.json()
             else:
-                return self.__error_handler_sync(response, 'key_validation', None)
+                return self.__handle_error_sync(response, 'key_validation')
 
-        except requests.exceptions.ConnectionError as error:
-            return self.__error_handler_sync(error, 'key_validation', None)
+        except requests.exceptions.ConnectionError as exception:
+            return self.__handle_error_sync(None, 'key_validation', exception=exception)
 
 
     async def do_api_request_async(
@@ -153,8 +163,6 @@ class Aki():
         params,
         result_callback=None,
         progress_callback=None,
-        request_error_callback=None,
-        progress_error_callback=None,
         progress_interval=DEFAULT_PROGRESS_INTERVAL,
         progress_stream=False,
         session=None,
@@ -169,21 +177,15 @@ class Aki():
                 Accepts synchronous functions and asynchrouns couroutines. Defaults to None
             progress_callback (callable or coroutine, optional): Callback function or coroutine with arguments progress_info (dict) and 
                 progress_data (dict) for tracking progress. Accepts synchronous functions and asynchrouns couroutines. Default is None.
-            request_error_callback (callable or coroutine, optional): Callback function or coroutine with argument error_description (str) 
-                for catching request errors. Accepts synchronous functions and asynchrouns couroutines.
-                Prevents ConnectionError and PermissionError. Defaults to None.
-            progress_error_callback (callable or coroutine, optional): Callback function or coroutine with argument error_description (str) for catching 
-                progress errors with successful initial request. Accepts synchronous functions and asynchrouns couroutines.
-                Prevents ConnectionErrors during Transmitting. Defaults to None.
             progress_interval (int, optional): Interval in seconds at which progress is checked. Default is {DEFAULT_PROGRESS_INTERVAL}.
             progress_stream (bool, optional): Not implemented yet
             session (aiohttp.ClientSession): Give existing session to Aki API to make login request in given session. Defaults to None.
 
         Raises:
-            ConnectionError: Raised if client couldn't connect with API sserver and no request_error_callback is given. Also raised if client lost 
-                connection during transmitting and no progress_error_callback is given.
-            PermissionError: Raised if client is not logged in the API server and no error_callback given.
-            NotImplementedError: If progress_stream != None.
+            ConnectionError: Raised if client couldn't connect with API server and raise_exceptions is True. 
+            BrokenPipeError: Raised if client lost connection during transmitting and raise_exceptions is True.
+            ValueError: Raised if request contains invalid input parameters and raise_exceptions is True.
+            PermissionError: Raised if request contains invalid api key and raise_exceptions is True.
 
         Returns:
             dict: Dictionary with job results
@@ -230,7 +232,7 @@ class Aki():
         params['client_session_auth_key'] = self.client_session_auth_key
         params['key'] = self.api_key
         params['wait_for_result'] = not progress_callback
-        result = await self.__fetch_async(url, params, request_error_callback)
+        result = await self.__fetch_async(url, params)
         if progress_callback:
             if result.get('success'):
                 job_id = result['job_id']
@@ -250,7 +252,6 @@ class Aki():
                         job_id,
                         result_callback,
                         progress_callback,
-                        progress_error_callback,
                         progress_interval
                     )
             else:
@@ -370,7 +371,6 @@ class Aki():
         self,
         params,
         progress_callback=None,
-        progress_error_callback=None,
         progress_interval=DEFAULT_PROGRESS_INTERVAL,
         progress_stream=None
         ):
@@ -381,16 +381,14 @@ class Aki():
             params (dict): Dictionary with parameters for the the API request like 'prompt' or 'image'
             progress_callback (callable, optional): Callback function or coroutine with arguments  progress_info (dict) and 
                 progress_data (dict) for receiving progress data. Defaults to None.
-            progress_error_callback (callable, optional): Callback function or coroutine with argument error_description (str) for catching 
-                progress errors with successful initial request. Prevents ConnectionErrors during Transmitting. Defaults to None.
             progress_interval (int, optional): Interval in seconds at which progress is checked. Default is 300.
             progress_stream (int, optional): Not implemented yet
 
         Raises:
-            ConnectionError: Raised if client couldn't connect with API server. Also raised if client lost connection during transmitting
-                and no progress_error_callback given.
-            PermissionError: Raised if client is not logged in the API server
-            NotImplementedError: If progress_stream != None
+            ConnectionError: Raised if client couldn't connect with API server and raise_exceptions is True. 
+            BrokenPipeError: Raised if client lost connection during transmitting and raise_exceptions is True.
+            ValueError: Raised if request contains invalid input parameters and raise_exceptions is True.
+            PermissionError: Raised if request contains invalid api key and raise_exceptions is True.
 
         Returns:
             dict: Dictionary with request result parameters.
@@ -455,7 +453,6 @@ class Aki():
                     result = self.__finish_api_request_while_receiving_progress_sync(
                         job_id,
                         progress_callback,
-                        progress_error_callback,
                         progress_interval
                     )
         else:
@@ -475,12 +472,11 @@ class Aki():
         self.canceled_jobs.append('all')
 
 
-    def get_endpoint_list(self, api_key=None, error_callback=None):
+    def get_endpoint_list(self, api_key=None):
         """Retrieve list of all available endpoints. If API key is given, only the endpoints with request permission are listed.
 
         Args:
             api_key (str, optional): The AKI api_key to show also endpoints only available to keys with special permission. Defaults to None.
-            error_callback (callable, optional): If given, no error is raised. Defaults to None.
 
         Returns:
             list[str]: List containing the endpoint names.
@@ -495,18 +491,17 @@ class Aki():
             if response.status_code == 200:
                 return response.json().get('endpoints')
             else:
-                return self.__error_handler_sync(response, 'get_endpoint_list', error_callback)
+                return self.__handle_error_sync(response, 'get_endpoint_list')
 
-        except requests.exceptions.ConnectionError as error:
-            return self.__error_handler_sync(error, 'get_endpoint_list', error_callback)
+        except requests.exceptions.ConnectionError as exception:
+            return self.__handle_error_sync(None, 'get_endpoint_list', exception=exception)
 
 
-    def get_endpoint_details(self, endpoint_name, api_key=None, error_callback=None):
+    def get_endpoint_details(self, endpoint_name, api_key=None):
         """Get endpoint details about given endpoint name.
 
         Args:
             endpoint_name (str): Name of the endpoint
-            error_callback (callable, optional): If given, no error is raised. Defaults to None.
 
         Returns:
             dict: Detailed information about the given endpoint.
@@ -631,10 +626,10 @@ class Aki():
             if response.status_code == 200:
                 return response.json()
             else:
-                return self.__error_handler_sync(response, 'get_endpoint_details', error_callback)
+                return self.__handle_error_sync(response, 'get_endpoint_details')
 
-        except requests.exceptions.ConnectionError as error:
-            return self.__error_handler_sync(error, 'get_endpoint_details', error_callback)
+        except requests.exceptions.ConnectionError as exception:
+            return self.__handle_error_sync(None, 'get_endpoint_details', exception=exception)
 
 
     def setup_session(self, session):
@@ -720,7 +715,6 @@ class Aki():
         job_id,
         result_callback,
         progress_callback,
-        progress_error_callback,
         progress_interval
         ):
         """
@@ -732,13 +726,11 @@ class Aki():
                 to handle the API request result. Accepts synchronous functions and asynchronous couroutines. Defaults to None
             progress_callback (callable or coroutine, optional): Callback function or coroutine with arguments progress_info (dict) and 
                 progress_data (dict) for tracking progress. Accepts synchronous functions and asynchronous couroutines. Default is None.
-            progress_error_callback (callable or coroutine, optional): Callback function or coroutine with arguments error_description (str) for catching 
-                progress errors with successful initial request. Accepts synchronous functions and asynchronous couroutines. Defaults to None.
             progress_interval (int): Interval in seconds at which progress is checked.
         """ 
         job_done = False
         while not job_done:
-            progress_result = await self.__fetch_progress_async(job_id, progress_error_callback)
+            progress_result = await self.__fetch_progress_async(job_id)
             job_state = progress_result.get('job_state')
             job_done = job_state in ('done', 'canceled', 'lapsed') and not progress_result.get('progress', {})
             progress_info, progress_data = self.__process_progress_result(progress_result)            
@@ -753,7 +745,6 @@ class Aki():
         self,
         job_id,
         progress_callback,
-        progress_error_callback,
         progress_interval
         ):
         """
@@ -763,8 +754,6 @@ class Aki():
             job_id (str): ID of related job.
             progress_callback (callback): Callback function with arguments progress_info (dict) and progress_data (dict) 
                 for tracking progress.
-            progress_error_callback (callable): Callback function with arguments error_description (str) for catching 
-                progress errors with successful initial request.
             progress_interval (int): Interval in seconds at which progress is checked.
 
         Returns:
@@ -772,7 +761,7 @@ class Aki():
         """ 
         job_done = False
         while not job_done:         
-            progress_result = self.__fetch_progress_sync(job_id, progress_error_callback)
+            progress_result = self.__fetch_progress_sync(job_id)
             job_state = progress_result.get('job_state')
             job_done = job_state in ('done', 'canceled', 'lapsed') and not progress_result.get('progress', {})
             progress_info, progress_data = self.__process_progress_result(progress_result)
@@ -821,7 +810,6 @@ class Aki():
         self,
         url,
         params,
-        error_callback=None,
         do_post=True
         ):
         """
@@ -831,8 +819,6 @@ class Aki():
         Args:
             url (str): The URL for the HTTP request.
             params (dict): Parameters for the HTTP request.
-            error_callback (callable or coroutine, optional): Callback function or coroutine with argument error_description (str) for catching 
-                errors. Accepts synchronous functions and asynchrouns couroutines. Defaults to None.
             do_post (bool, optional): Whether to use a POST request. Defaults to True.
 
         Returns:
@@ -868,10 +854,10 @@ class Aki():
                 if response.status == 200:
                     return response_json
                 else:
-                    return await self.__error_handler_async(response, 'API request', error_callback)
+                    return await self.__handle_error_async(response, 'api')
                         
-        except aiohttp.client_exceptions.ClientConnectorError as error:
-            return await self.__error_handler_async(error, 'API request', error_callback)
+        except aiohttp.client_exceptions.ClientConnectorError as exception:
+            return await self.__handle_error_async(None, 'api', exception=exception)
 
 
     def __fetch_sync(
@@ -923,20 +909,18 @@ class Aki():
             if response.status_code == 200:
                 return response.json()
             else:
-                return self.__error_handler_sync(response, 'API request')
+                return self.__handle_error_sync(response, 'api')
       
-        except requests.exceptions.ConnectionError as error:
-            return self.__error_handler_sync(error, 'API request')
+        except requests.exceptions.ConnectionError as exception:
+            return self.__handle_error_sync(None, 'api', exception=exception)
 
 
-    async def __fetch_progress_async(self, job_id, progress_error_callback=None):
+    async def __fetch_progress_async(self, job_id):
         """
         Fetch progress data asynchronously from API server for running job with given job id.
 
         Args:
             job_id (str): Job id of running job
-            progress_error_callback (callable or coroutine): Callback function with arguments error_description (str) for catching 
-                progress errors with successful initial request. Accepts synchronous functions and asynchrouns couroutines.
 
         Returns:
             dict: Dictionary with progress result of the job.
@@ -1031,27 +1015,25 @@ class Aki():
                         return response_json
                     else:
                         if counter > 3:
-                            return await self.__error_handler_async(response, 'progress', progress_error_callback)
+                            return await self.__handle_error_async(response, 'progress')
                         else:
                             await asyncio.sleep(1)
                             continue
 
-            except aiohttp.client_exceptions.ClientConnectionError as error:
+            except aiohttp.client_exceptions.ClientConnectionError as exception:
                 if counter > 3:
-                    return await self.__error_handler_async(error, 'progress', progress_error_callback)
+                    return await self.__handle_error_async(None, 'progress', exception=exception)
                 else:
                     await asyncio.sleep(1)
                     continue
 
 
-    def __fetch_progress_sync(self, job_id, progress_error_callback=None):
+    def __fetch_progress_sync(self, job_id):
         """
         Fetch progress data from API server for running job with given job id.
 
         Args:
             job_id (str): Job id of running job.
-            progress_error_callback (callable): Callback function with arguments error_description (str) for catching 
-                errors during transmission with successful initial request.
 
         Returns:
             dict: Progress information for the job.
@@ -1123,40 +1105,38 @@ class Aki():
                     'success': True
                 }
         """
+
+        url = f'{self.api_server_url}progress/{self.endpoint_name}'
+        params = {
+            'key': self.api_key, 
+            'job_id': job_id
+        }
+        params.update(self.progress_input_params.pop(job_id, {}))
+        if job_id in self.canceled_jobs:
+            self.canceled_jobs.remove(job_id)
+            params['canceled'] = True
         try:
-            url = f'{self.api_server_url}progress/{self.endpoint_name}'
-            params = {
-                'key': self.api_key, 
-                'job_id': job_id
-            }
-            params.update(self.progress_input_params.pop(job_id, {}))
-            if job_id in self.canceled_jobs:
-                self.canceled_jobs.remove(job_id)
-                params['canceled'] = True
-
             response = requests.post(url, json=params)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return self.__error_handler_sync(response, 'progress', progress_error_callback)
+        except requests.exceptions.ConnectionError as exception:
+            return self.__handle_error_sync(None, 'progress', exception=exception)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return self.__handle_error_sync(response, 'progress')
 
-        except requests.exceptions.ConnectionError as error:
-            return self.__error_handler_sync(error, 'progress', progress_error_callback)
 
-
-    async def __error_handler_async(
+    async def __handle_error_async(
         self,
         response,
         request_type,
-        error_callback
+        exception=None
         ):
         """Asynchronous error handler. Calls error_callback if given with error_description as argument, else raises ConnectionError.
 
         Args:
             response (requests.models.Response): Response of http request
             request_type (str): Type of request (login, API request, progress)
-            error_callback (callable or coroutine): Callback function with argument error_description (str) for catching errors.
-                Accepts synchronous functions and asynchrouns couroutines.
 
         Raises:
             ConnectionError: ConnectionError with error description.
@@ -1167,88 +1147,102 @@ class Aki():
         """
         if self.session and not self.session.close:
             await self.session.close()
-        status_code = response.status if hasattr(response, 'status') else None
-        response_json = await response.json() if status_code else None
-            
-        error_description = self.__make_error_description(status_code, response_json, request_type)
-        
-        if error_callback:
-            await if_async_else_run(error_callback, response_json)
-            return response_json
-        elif response_json and response_json.get('error') and 'Client session authentication key not registered in API Server' in response_json.get('error'):
-            raise ConnectionRefusedError('Login failed! You first need to run do_login() to login to the API server!\n'+error_description)
-        elif request_type == 'progress':
-            raise BrokenPipeError(
-                f'Lost connection while receiving progress with error {response_json}. '
-                'To catch this error, use progress_error_callback'
-            )
+
+        if hasattr(response, 'json'):
+            response_json = await response.json()
+            error_msg = response_json.get('error')
+            if isinstance(error_msg, list):
+                response_json['error'] = ';'.join(error_msg)
+            if 'error' not in response_json.keys():
+                response_json['error'] = 'Unknown network error'
+            if 'success' not in response_json.keys():
+                response_json['success'] = False
         else:
-            raise ConnectionError(error_description)
+            response_json = {
+                'success': False,
+                'error': str(exception) if exception else str(response) # To catch unknown network response types
+            }
+
+        status_code = response.status if hasattr(response, 'status') else 500
 
 
-    def __error_handler_sync(
+        response_json['error_code'] = status_code
+        if self.raise_exceptions:
+            self.__raise_exception(response_json, request_type, status_code)
+        response_json['error_code'] = status_code
+        return response_json
+
+    def __handle_error_sync(
         self,
         response,
         request_type,
-        error_callback=None
+        exception=None
         ):
-        """Error handler. Calls error_callback if given with error_description as argument, else raises ConnectionError.
+        if hasattr(response, 'json'):
+            response_json = response.json()
+            error_msg = response_json.get('error')
+            if isinstance(error_msg, list):
+                response_json['error'] = ';'.join(error_msg)
+            if 'error' not in response_json.keys():
+                response_json['error'] = 'Unknown network error'
+            if 'success' not in response_json.keys():
+                response_json['success'] = False
 
-        Args:
-            response (requests.models.Response): Response of http request
-            request_type (str): Type of request (login, API request, progress)
-            error_callback (callable, optional): Callback function with argument error_description (str) for catching errors.
-                Defaults to None
-
-        Raises:
-            ConnectionError: ConnectionError with error description
-            PermissionError: Raised if client is not logged in to the API server.
-
-        Returns:
-            str: Error description
-        """        
-        status_code = response.status_code if hasattr(response, 'status_code') else None
-        if status_code == 404:
-            error_response = response.text
-        elif status_code == 401:
-            error_response = response.json().get('error')
-        elif status_code is not None:
-            error_response = str(response.json())
+        elif hasattr(response, 'text'):
+            response_json = {
+                'success': False,
+                'error': response.text
+            }
         else:
-            error_response = None
-
-        error_description = self.__make_error_description(status_code, error_response, request_type)
+            response_json = {
+                'success': False,
+                'error': str(exception) if exception else str(response) # To catch unknown network response types
+            }
+        status_code = response.status_code if hasattr(response, 'status_code') else 500
         
-        if error_callback:
-            error_callback(error_response)
-            return error_response
-        elif error_response and 'Client session authentication key not registered in API Server' in error_response:
-            raise ConnectionRefusedError('Login failed! You first need to run do_login() to login to the API server!\n'+error_description)
-        elif request_type == 'progress':
-            raise BrokenPipeError('Lost connection while receiving progress. To catch this error, use progress_error_callback')
-        else:
-            raise ConnectionError(error_description)
+        if self.raise_exceptions:
+            self.__raise_exception(response_json, request_type, status_code)
+        response_json['error_code'] = status_code
+        return response_json
 
-        
+
+    def __raise_exception(self, response_json, request_type, status_code):
+        error_description = self.__make_error_description(
+            response_json,
+            request_type,
+            status_code
+        )
+        if 500 <= status_code < 600 or status_code == 404: # 404 = Endpoint disabled or no free queue slot
+            if request_type == 'progress':
+                raise BrokenPipeError(error_description)
+            else:
+                raise ConnectionError(error_description)
+        elif status_code == 400:
+            raise ValueError(error_description)
+        elif 400 < status_code < 500:
+            raise PermissionError(error_description)
+
 
     def __make_error_description(
         self, 
-        status_code, 
-        error_reponse, 
-        request_type
+        response_json, 
+        request_type,
+        status_code
         ):
         """Helper method to create error report string
 
         Args:
+
+            response_json (dict): Request error response dict.
+            request_type (str): Type of request (login, api, progress)
             status_code (int): Status code of request response.
-            error_reponse (dict): Request error response text.
-            request_type (str): Type of request (login, API request, progress)
 
         Returns:
             str: Error description
-        """        
-        status_code_str = f'Status code: {status_code}\nResponse: {error_reponse}' if status_code else f'Connection to {self.api_server} offline'
-        return f'{request_type.capitalize()} at {self.api_server_url} failed!\n{status_code_str}'
+        """
+        status_code_str = f'Http status code: {status_code}\nError message: {response_json.get("error")}'
+        return f'{request_type.capitalize()} request at {self.api_server_url} failed!\n{status_code_str}'
+
 
 
     def __convert_result_params(self, params):
@@ -1346,8 +1340,6 @@ async def do_aki_request_async(
     params,
     result_callback = None, 
     progress_callback = None,
-    request_error_callback = None,
-    progress_error_callback = None,
     session = None
     ):
     """
@@ -1360,10 +1352,6 @@ async def do_aki_request_async(
         result_callback (callback, optional): Callback function with argument result (dict) to handle the API request result. Defaults to None.
         progress_callback (callback, optional): Callback function with arguments progress_info (dict). Defaults to None.
             and progress_data (dict) for tracking progress. Defaults to None.
-        request_error_callback (callback, optional): Callback function with arguments error_description (str) 
-            for catching request errors. Defaults to None.
-        progress_error_callback (callable or coroutine, optional): Callback function with arguments error_description (str) for catching 
-            progress errors with successful initial request. Accepts synchronous functions and asynchrouns couroutines. Defaults to None.
         session (aiohttp.ClientSession): Give existing session to Aki API to make login request in given session. Defaults to None.
 
     Returns:
@@ -1477,9 +1465,7 @@ async def do_aki_request_async(
     result = await aki.do_api_request_async(
         params,
         result_callback,
-        progress_callback,
-        request_error_callback,
-        progress_error_callback
+        progress_callback
     )
     return result
 
@@ -1488,8 +1474,7 @@ def do_aki_request(
     endpoint_name,
     api_key,
     params,
-    progress_callback = None,
-    progress_error_callback = None
+    progress_callback = None
     ):
     """A simplified interface for making a single synchronous API request
 
@@ -1499,8 +1484,6 @@ def do_aki_request(
         params (dict): Dictionary with api request parameters
         progress_callback (callback, optional): Callback function with arguments progress_info (dict) 
             and progress_data (dict) for tracking progress. Defaults to None.
-        progress_error_callback (callback, optional): Callback function with argument error_description (str) 
-            called if request was successfull but progress got errors. Defaults to None.
 
     Returns:
         dict: Dictionary with request result parameters
@@ -1512,7 +1495,7 @@ def do_aki_request(
 
     Examples:
 
-        Example usage with progress and progress_error_callback:
+        Example usage with progress_callback:
 
         .. highlight:: python
         .. code-block:: python
@@ -1523,10 +1506,8 @@ def do_aki_request(
                 process_progress_info(progress_info)
                 process_progress_data(progress_data)
 
-            def progress_error_callback(error_description):
-                pass
 
-            result = do_aki_request('llama3_chat', 'api_key', {'text': 'Chat question'}, progress_callback, progress_error_callback)
+            result = do_aki_request('llama3_chat', 'api_key', {'text': 'Chat question'}, progress_callback)
         
         Example progress result dictionary at start:
 
@@ -1591,7 +1572,7 @@ def do_aki_request(
             }
     """ 
     aki = Aki(endpoint_name, api_key)
-    return aki.do_api_request(params, progress_callback, progress_error_callback)
+    return aki.do_api_request(params, progress_callback)
     
     
 async def if_async_else_run(callback, *args):    

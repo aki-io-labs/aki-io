@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='aki-io',
-    version='0.9.9',
+    version='0.9.10',
     author='AKI',
     author_email='hello@aki.io',
     packages=['aki_io'],
