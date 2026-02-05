@@ -831,6 +831,7 @@ class Aki():
                 }
         """
         params = self.__convert_object_or_byte_string_params_to_base64(params)
+        params = self.__serialize_json_values(params)
         try:       
             method = self.session.post if do_post else self.session.get
             request_params = {'json': params} if do_post else {'params': params}
@@ -885,6 +886,7 @@ class Aki():
                 }
         """
         params = self.__convert_object_or_byte_string_params_to_base64(params)
+        params = self.__serialize_json_values(params)
         try:
             method = requests.post if do_post else requests.get
             request_params = {'json': params} if do_post else {'params': params}
@@ -1290,6 +1292,14 @@ class Aki():
                     if not data_format:
                         data_format = self.__get_data_format_from_byte_string(value)
                     params[key] = f'data:{self.output_type}/{data_format};base64,' + base64.b64encode(value).decode('utf-8')
+        return params
+
+
+    def __serialize_json_values(self, params):
+        if params:
+            for key, value in params.items():
+                if isinstance(value, dict) or isinstance(value, list):
+                    params[key] = json.dumps(value)
         return params
 
 
