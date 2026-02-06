@@ -230,7 +230,7 @@ class Aki():
         params['client_session_auth_key'] = self.client_session_auth_key
         params['key'] = self.api_key
         params['wait_for_result'] = not progress_callback
-        result = await self.__fetch_async(url, params)
+        result = await self.__fetch_async(url, params, result_callback=result_callback)
         if progress_callback:
             if result.get('success'):
                 job_id = result['job_id']
@@ -358,6 +358,8 @@ class Aki():
                     if job_state != 'canceled':
                         yield result
                         await asyncio.sleep(progress_interval)
+        else:
+            yield result
 
 
     def do_api_request(
@@ -796,7 +798,8 @@ class Aki():
         self,
         url,
         params,
-        do_post=True
+        do_post=True,
+        result_callback=None
         ):
         """
         Perform an asynchronous HTTP request to the API server. Python objects and byte string params will be converted automatically to base64 string.
@@ -841,10 +844,16 @@ class Aki():
                 if response.status == 200:
                     return response_json
                 else:
-                    return await self.__handle_error_async(response, 'api')
+                    response = await self.__handle_error_async(response, 'api')
+                    if result_callback:
+                        await if_async_else_run(result_callback, response)
+                    return response
                         
         except aiohttp.client_exceptions.ClientConnectorError as exception:
-            return await self.__handle_error_async(None, 'api', exception=exception)
+            response = await self.__handle_error_async(None, 'api', exception=exception)
+            if result_callback:
+                await if_async_else_run(result_callback, response)
+            return response
 
 
     def __fetch_sync(
