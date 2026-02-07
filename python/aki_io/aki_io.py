@@ -9,7 +9,6 @@ import base64
 import asyncio
 import requests
 import time
-# import pkg_resources
 import json
 
 
@@ -1548,7 +1547,7 @@ def do_aki_request(
                 },
                 'success': True
             }
-    """ 
+    """
     aki = Aki(endpoint_name, api_key)
     return aki.do_api_request(params, progress_callback)
     

@@ -1,5 +1,4 @@
 from aki_io import Aki
-import json
 
 def main():
     aki = Aki('llama3_8b_chat', 'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37')
@@ -11,20 +10,22 @@ def main():
 
     params = {
         "prompt_input": "Tell me a joke",
-        "chat_context": json.dumps(chat_context),   # dump the chat context to a string
+        "chat_context": chat_context,
         "top_k": 40,
         "top_p": 0.9,
         "temperature": 0.8,
         "max_gen_tokens": 1000
     }
 
-    try:
         
-        result = aki.do_api_request(params) # Do the API call and wait for result
-        print("API response:\n", result['text'])
-        
-    except Exception as e:
-        print(e)
+    result = aki.do_api_request(params) # Do the API call and wait for result
+    if result['success']:
+        print("API JSON response:\n", result)
+        print("\nChat response:\n", result['text'])
+        print("\nGenerated Tokens:", result['num_generated_tokens'], )
+    else:
+        print("API error:", result['error'])
+
 
 if __name__ == "__main__":
     main()

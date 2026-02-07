@@ -1,7 +1,6 @@
-import json
 import base64
 from pathlib import Path
-from aki_io import Aki
+from aki_io import Aki, do_aki_request
 
 def generate_image():
     
@@ -11,17 +10,13 @@ def generate_image():
         'seed': -1,
         'height': 512,
         'width': 512,
-        'steps': 40,
-        'provide_progress_images': 'none',
-        'wait_for_result': True
     }
 
     # Call the AKI API
     result = do_aki_request(
-        endpoint_name='qwen_image',
-        api_key='fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37',
-        params,
-    )
+        'z_image_turbo',
+        'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37',
+        params)
 
     # Save the images
     images = result.get('images') or result.get('job_result', {}).get('images', [])
