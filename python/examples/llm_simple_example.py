@@ -16,7 +16,7 @@ params = {
     "max_gen_tokens": 1000,
 }
 
-    
+
 result = aki.do_api_request(params) # Do the API call and wait for result
 if result['success']:
     print("API JSON response:\n", result)

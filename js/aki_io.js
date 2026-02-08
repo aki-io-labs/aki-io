@@ -219,7 +219,9 @@ class Aki {
             }
             params.job_id = jobID;
             params.key = this.apiKey;
-            params.canceled = (jobID in this.jobsCanceled) || (null in this.jobsCanceled) ? true : false;
+            if((jobID in this.jobsCanceled) || (null in this.jobsCanceled)) {
+                params.cancel = true;
+            }
             delete this.jobsCanceled[jobID];
             delete this.jobsCanceled[null];
 

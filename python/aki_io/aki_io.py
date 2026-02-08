@@ -1110,7 +1110,7 @@ class Aki():
         params.update(self.progress_input_params.pop(job_id, {}))
         if job_id in self.canceled_jobs:
             self.canceled_jobs.remove(job_id)
-            params['canceled'] = True
+            params['cancel'] = True
         try:
             response = requests.post(url, json=params)
         except requests.exceptions.ConnectionError as exception:
