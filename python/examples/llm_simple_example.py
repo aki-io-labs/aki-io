@@ -3,17 +3,17 @@ from aki_io import Aki
 aki = Aki('llama3_8b_chat', 'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37')
 
 chat_context = [
-    {"role": "user", "content": "Hi! How are you?"},
-    {"role": "assistant", "content": "I'm doing well, thank you! How can I help you today?"}
+    {"role": "system", "content": "You are a helpful assistant named AKI."},
+    {"role": "assistant", "content": "How can I help you today?"},
+    {"role": "user", "content": "Tell me a joke"},
 ]
 
 params = {
-    "prompt_input": "Tell me a joke",
     "chat_context": chat_context,
     "top_k": 40,
     "top_p": 0.9,
     "temperature": 0.8,
-    "max_gen_tokens": 1000
+    "max_gen_tokens": 1000,
 }
 
     

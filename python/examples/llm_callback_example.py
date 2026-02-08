@@ -1,4 +1,3 @@
-import asyncio
 from aki_io import Aki
 
 aki = Aki('llama3_8b_chat', 'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37')
@@ -14,7 +13,7 @@ params = {
     "top_k": 40,
     "top_p": 0.9,
     "temperature": 0.8,
-    "max_gen_tokens": 4000,
+    "max_gen_tokens": 1000,
 }
 
 previous_response = ''
@@ -26,20 +25,10 @@ def progress_callback(progress, progress_data):
         print(current_response.removeprefix(previous_response), end='', flush=True)
         previous_response = current_response
 
-def result_callback(result):
-    if result['success']:
-        print(result.get('text').removeprefix(previous_response), end='', flush=True)    
-        print("\n\nGenerated Tokens:", result['num_generated_tokens'], )
-    else:
-        print("API Error:", result.get('error_code'), "-", result.get('error'))            
-
-
-# use create_task() instead of run() to fire in background
-asyncio.run(aki.do_api_request_async(
-        params,
-        result_callback,
-        progress_callback # optional
-    )) 
-
-
-asyncio.run(aki.close_session())
+result = aki.do_api_request(params, progress_callback) # Do the API call and stream the output
+if result['success']:
+    print("\nAPI JSON response:\n", result)
+    print("\nFinal Chat response:\n", result['text'])
+    print("\nGenerated Tokens:", result['num_generated_tokens'], )
+else:
+    print("API Error:", result.get('error_code'), "-", result.get('error'))
