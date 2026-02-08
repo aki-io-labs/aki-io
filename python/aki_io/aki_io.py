@@ -12,7 +12,7 @@ import time
 import json
 
 
-DEFAULT_PROGRESS_INTERVAL = 0.3
+DEFAULT_PROGRESS_INTERVAL = 0.2
 
 
 class Aki():
@@ -229,7 +229,7 @@ class Aki():
         params['client_session_auth_key'] = self.client_session_auth_key
         params['key'] = self.api_key
         params['wait_for_result'] = not progress_callback
-        result = await self.__fetch_async(url, params, result_callback=result_callback)
+        result = await self.__fetch_async(url, params)
         if progress_callback:
             if result.get('success'):
                 job_id = result['job_id']
