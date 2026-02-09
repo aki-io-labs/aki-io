@@ -28,6 +28,7 @@ class Aki {
         this.clientSessionAuthKey = null;
         this.apiServerUrl = 'https:/aki.io/api/';
         this.defaultProgressIntervall = 300;
+        this.raiseException = false;
         this.jobsCanceled = {};
         this.progressInputParams = {};
 
@@ -42,6 +43,9 @@ class Aki {
             }
             if( options['progressIntervall'] ) {
                 this.defaultProgressIntervall = options['progressIntervall'];
+            }
+            if( options['raiseException'] ) {
+                this.raiseException = options['raiseException'];
             }
         }
     }
@@ -60,51 +64,50 @@ class Aki {
         const body = doPost ? JSON.stringify(params) : null;
 
         const response = await fetch(url, { method, headers, body });
-
-        //if (!response.ok) {
-        //    throw new Error(`Failed to fetch data from ${url}. Response ${response}`);
-        //}
-
-        return response.json();
+        if (response.success) {
+            return response.json();
+        } else {
+            if (this.raiseException) {
+                throw new Error(response.error)
+            } else {
+                let responseJson = await response.json();
+                if (Array.isArray(responseJson['error'])) {
+                    responseJson['error'] = responseJson['error'].join(";");
+                }
+                responseJson['error_code'] = response.status
+                return responseJson;
+            }
+        }
     }
 
     /**
      * Method for API Key Initialization.
      * @async
      * @param {function} [resultCallback=null] - The callback after successful API key validation.
-     * @param {function} [resultCallback=null] - The error callback for unsuccessful API key validation.
      * @param {sting} apiKey - optional: set to new api Key required to authenticate and authorize to use api endpoint
      * 
      */
-    async initAPIKey(resultCallback = null, errorCallback = null, apiKey = null) {
+    async initAPIKey(resultCallback = null, apiKey = null) {
         if (apiKey != null) {
             this.apiKey = apiKey;
         }
-        try {
-                const response = await this.fetchAsync(
-                    `${this.apiServerUrl}validate_key?key=${this.apiKey}&version=${encodeURIComponent(Aki.version)}`, false
-                );
-                if (response.success) {
-                    if (resultCallback && typeof resultCallback === 'function') {
-                        resultCallback(response);
-                    }
-                    else {
-                        console.log(`API Key initialized`);
-                    }
-                    return response;
-                }
-                else {
-                    var errorMessage = `${response.error}`
-                    if (response.ep_version) {
-                        errorMessage += ` Endpoint version: ${response.ep_version}`
-                    }
-                    throw new Error(errorMessage)
-                }
-            } 
-        catch (error) {
-            console.error('Error during API Key Validation:', error);
-            if (errorCallback && typeof errorCallback === 'function') {
-                errorCallback(error);
+
+        const response = await this.fetchAsync(
+            `${this.apiServerUrl}validate_key?key=${this.apiKey}&version=${encodeURIComponent(Aki.version)}`, false
+        );
+        if (response.success) {
+            if (resultCallback && typeof resultCallback === 'function') {
+                resultCallback(response);
+            }
+            else {
+                console.log(`API Key initialized`);
+            }
+            return response;
+        }
+        else {
+            var errorMessage = `${response.error}`
+            if (response.ep_version) {
+                errorMessage += ` Endpoint version: ${response.ep_version}`
             }
         }
     }
@@ -128,7 +131,6 @@ class Aki {
         params.wait_for_result = !progressCallback;
 
         const response = await this.fetchAsync(url, params, true);
-
         if (response.success) {
             const jobID = response.job_id;
             const progressInfo = {
@@ -155,40 +157,6 @@ class Aki {
         }
     }
 
-    /**
-     * Method to set up a progress stream.
-     * @async
-     * @param {string} jobID - The ID of the job for the progress stream.
-     * @param {function} progressCallback - The callback for progress updates.
-     */
-    async setupProgressStream(jobID, resultCallback, progressCallback) {
-        console.error('Error: The stream feature is not yet fully implemented. Please call doAPIRequest() without progressStream=true.');
-        alert('Attention: The stream feature is not yet fully implemented. Please call doAPIRequest() without progressStream=true.')
-        const eventSourceURL = `${this.apiServerUrl}stream_progress?client_session_auth_key=${encodeURIComponent(this.clientSessionAuthKey)}&job_id=${encodeURIComponent(jobID)}`;
-        const eventSource = new EventSource(eventSourceURL);
-
-        eventSource.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log('eventSource.onmessage data:', data);
-            const progressInfo = {
-                progress: data.progress,
-                queue_position: data.queue_position,
-                estimate: -1
-            };
-
-            progressCallback(progressInfo, data.progress_data);
-
-            if (data.job_state === 'done') {
-                const jobResult = data.job_result;
-                jobResult.job_id = data.job_id;
-                jobResult.success = data.success;
-                resultCallback(jobResult);
-                eventSource.close();
-            } else if (data.job_state === 'canceled') {
-                eventSource.close();
-            }
-        };
-    }
 
     /**
      * Method for polling progress updates.
@@ -202,12 +170,7 @@ class Aki {
 
         const progressURL = `${this.apiServerUrl}progress/${this.endpointName}`;
         const fetchProgress = async (progressURL, params) => {
-            try {
-                return await this.fetchAsync(progressURL, params, true);
-            } catch (error) {
-                console.error('Error fetching progress data:', error);
-                return {};
-            }
+            return await this.fetchAsync(progressURL, params, true);
         }
 
         const checkProgress = async () => {
