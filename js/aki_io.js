@@ -28,7 +28,7 @@ class Aki {
         this.clientSessionAuthKey = null;
         this.apiServerUrl = 'https:/aki.io/api/';
         this.defaultProgressIntervall = 300;
-        this.raise_exception = false;
+        this.raiseException = false;
         this.jobsCanceled = {};
         this.progressInputParams = {};
 
@@ -44,8 +44,8 @@ class Aki {
             if( options['progressIntervall'] ) {
                 this.defaultProgressIntervall = options['progressIntervall'];
             }
-            if( options['raise_exception'] ) {
-                this.raise_exception = options['raise_exception'];
+            if( options['raiseException'] ) {
+                this.raiseException = options['raiseException'];
             }
         }
     }
@@ -67,7 +67,7 @@ class Aki {
         if (response.success) {
             return response.json();
         } else {
-            if (this.raise_exception) {
+            if (this.raiseException) {
                 throw new Error(response.error)
             } else {
                 let responseJson = await response.json();
@@ -84,7 +84,6 @@ class Aki {
      * Method for API Key Initialization.
      * @async
      * @param {function} [resultCallback=null] - The callback after successful API key validation.
-     * @param {function} [resultCallback=null] - The error callback for unsuccessful API key validation.
      * @param {sting} apiKey - optional: set to new api Key required to authenticate and authorize to use api endpoint
      * 
      */
