@@ -17,18 +17,18 @@ params = {
     "max_gen_tokens": 4000,
 }
 
-previous_response = ''
+output_position = 0
 
 def progress_callback(progress, progress_data):
-    global previous_response
+    global output_position
     if progress_data and 'text' in progress_data:
-        current_response = progress_data.get('text')
-        print(current_response.removeprefix(previous_response), end='', flush=True)
-        previous_response = current_response
+        text = progress_data.get('text')
+        print(text[output_position:], end='', flush=True)
+        output_position = len(text)
 
 def result_callback(result):
     if result['success']:
-        print(result.get('text').removeprefix(previous_response), end='', flush=True)    
+        print(result.get('text')[output_position:], end='', flush=True)    
         print("\n\nGenerated Tokens:", result['num_generated_tokens'], )
     else:
         print("API Error:", result.get('error_code'), "-", result.get('error'))            

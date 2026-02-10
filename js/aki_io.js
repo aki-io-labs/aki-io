@@ -25,9 +25,8 @@ class Aki {
     constructor(endpointName, apiKey, options = {}) {
         this.endpointName = endpointName;        
         this.apiKey = apiKey;
-        this.clientSessionAuthKey = null;
         this.apiServerUrl = 'https:/aki.io/api/';
-        this.defaultProgressIntervall = 300;
+        this.defaultProgressIntervall = 200;
         this.raiseException = false;
         this.jobsCanceled = {};
         this.progressInputParams = {};
@@ -121,12 +120,10 @@ class Aki {
      * @param {function} [progressCallback=null] - The callback for progress updates.
      * @param {boolean} [progressStream=false] - Specifies whether the progress should be streamed (default: false). Attention: The stream feature is not yet fully implemented.
      */
-    async doAPIRequest(params, resultCallback, progressCallback = null, progressStream = false, apiKey = null) {
+    async doAPIRequest(params, resultCallback, progressCallback = null, apiKey = null) {
         const url = `${this.apiServerUrl}call/${this.endpointName}`;
-        console.log(`URL: ${url}`);
 
         params = await this.stringifyObjects(params)
-        params.client_session_auth_key = this.clientSessionAuthKey;
         params.key = apiKey !== null ? apiKey : this.apiKey;
         params.wait_for_result = !progressCallback;
 
@@ -142,11 +139,7 @@ class Aki {
             if (progressCallback){
                 progressCallback(progressInfo, null); // Initial progress update
 
-                if (progressStream) {
-                    this.setupProgressStream(jobID, resultCallback, progressCallback);
-                } else {
-                    this.pollProgress(url, jobID, resultCallback, progressCallback);
-                }
+                this.pollProgress(url, jobID, resultCallback, progressCallback);
             }
             else {
                 resultCallback(response);
@@ -253,11 +246,9 @@ class Aki {
  * @param {function} resultCallback - The callback after the request is completed.
  * @param {function} [progressCallback=null] - The callback for progress updates.
  */
-function doAPIRequest(endpointName, params, resultCallback, apiKey = null, progressCallback = null) {
-    const model = new Aki(endpointName, apiKey);
-    model.initAPIKey((data) => {
-        model.doAPIRequest(params, resultCallback, progressCallback);
-    });
+function doAPIRequest(endpointName, apiKey, params, resultCallback, progressCallback = null) {
+    const aki = new Aki(endpointName, apiKey);
+    aki.doAPIRequest(params, resultCallback, progressCallback);
 }
 
 // Export the Aki class and doAPIRequest function for Node.js only to avoid the console error in browsers

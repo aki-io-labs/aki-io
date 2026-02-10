@@ -16,14 +16,14 @@ params = {
     "max_gen_tokens": 1000,
 }
 
-previous_response = ''
+output_position = 0
 
 def progress_callback(progress, progress_data):
-    global previous_response
+    global output_position
     if progress_data and 'text' in progress_data:
-        current_response = progress_data.get('text')
-        print(current_response.removeprefix(previous_response), end='', flush=True)
-        previous_response = current_response
+        text = progress_data.get('text')
+        print(text[output_position:], end='', flush=True)
+        output_position = len(text)
 
 result = aki.do_api_request(params, progress_callback) # Do the API call and stream the output
 if result['success']:

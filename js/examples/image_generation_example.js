@@ -3,18 +3,17 @@ const fs = require('fs');
 
 // Configuration
 const CONFIG = {
-    ENDPOINT: 'qwen_image',
+    ENDPOINT: 'z_image_turbo',
     API_KEY: 'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37'
 };
 
 
 // Image generation parameters
 const params = {
-    prompt: 'A beautiful sunset over mountains',
+    prompt: 'Astronaut on Mars holding a banner which states "AKI is happy to serve your model" during sunset sitting on a giant yellow rubber duck',
     height: 1024,
     width: 1024,
-    steps: 30,
-    guidance: 7.5,
+    steps: 8,
     wait_for_result: true
 };
 
@@ -25,9 +24,10 @@ doAPIRequest(
     CONFIG.ENDPOINT,
     CONFIG.API_KEY,
     params,
-    (result, error) => {
-        if (error) {
-            console.error('❌ Error:', error.message || 'Unknown error');
+    (result) => {
+        // Error handling
+        if (result && result.success === false) {
+            console.error('❌ API Error:', result.error || 'Unknown error');
             return;
         }
 
