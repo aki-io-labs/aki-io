@@ -456,7 +456,7 @@ class Aki():
 
 
     def cancel_request(self, job_id=None):
-        self.canceled_jobs.append('all')
+        self.canceled_jobs.append(job_id if job_id else 'all')
 
 
     def get_endpoint_list(self, api_key=None):
@@ -991,19 +991,21 @@ class Aki():
             counter += 1
             try:
                 url = f'{self.api_server_url}progress/{self.endpoint_name}'
-                if job_id in self.canceled_jobs:
-                    canceled = True
-                    self.canceled_jobs.remove(job_id)
-                elif 'all' in self.canceled_jobs:
-                    canceled = True
-                    self.canceled_jobs.remove('all')
-                else:
-                    canceled = False
                 params = {
                     'key': self.api_key, 
-                    'job_id': job_id,
-                    'canceled': canceled
+                    'job_id': job_id
                 }
+                params.update(self.progress_input_params.pop(job_id, {}))
+                if job_id in self.canceled_jobs:
+                    cancel = True
+                    self.canceled_jobs.remove(job_id)
+                elif 'all' in self.canceled_jobs:
+                    cancel = True
+                    self.canceled_jobs.remove('all')
+                else:
+                    cancel = False
+                if cancel:
+                    params['cancel'] = True
                 
                 async with self.session.post(url, json=params) as response:
                     response_json = await response.json()
@@ -1109,8 +1111,17 @@ class Aki():
         }
         params.update(self.progress_input_params.pop(job_id, {}))
         if job_id in self.canceled_jobs:
+            cancel = True
             self.canceled_jobs.remove(job_id)
+        elif 'all' in self.canceled_jobs:
+            cancel = True
+            self.canceled_jobs.remove('all')
+        else:
+            cancel = False
+
+        if cancel:
             params['cancel'] = True
+
         try:
             response = requests.post(url, json=params)
         except requests.exceptions.ConnectionError as exception:
