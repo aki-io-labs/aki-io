@@ -40,58 +40,35 @@ Follow these steps to start using the AKI.IO API:
 2. After logging in, navigate to your **User Profile** page at [aki.io/admin/user](https://aki.io/admin/user) to view your API Key.
 3. **Important**: Keep your API key secure. It's bound to your user and should not be embedded in public code.
 
-### 2. Choose Your Library
-Select the client interface that matches your development stack. Detailed guides are available in each directory's `README`.
+### 2. Make Your First Request
 
-### 3. Make Your First Request
 Here’s a quick example to test your setup:
 
 
 **Python Example**
 
-```python
-# Install the library (example)
-# pip install aki-io-python
+Checkout this repo and install the **aki-io** pip with following command:
 
-from aki_io import AKIClient
-
-# Initialize the client with your API key
-client = AKIClient(api_key="YOUR_API_KEY")
-
-# Example: LLM Chat
-response = client.chat.create(
-    model="gpt-4-turbo",
-    messages=[
-        {"role": "user", "content": "Hello, AKI.IO!"}
-    ]
-)
-
-print(response.choices[0].message.content)
+```bash
+pip install "git+https://github.com/aki-io-labs/aki-io.git#subdirectory=python"
 ```
 
+Change into the 'python/examples' directory and run:
+
+```bash
+python3 llm_simple_example.py
+```
 
 **JavaScript Example**
 
-```javascript
-// Install the library (example)
-// npm install aki-io-js
+Checkout this repo and change into the 'js/examples' directory and run:
 
-import { AKIClient } from 'aki-io-js';
 
-// Initialize the client
-const client = new AKIClient({ apiKey: 'YOUR_API_KEY' });
-
-// Example: LLM Chat
-async function main() {
-  const response = await client.chat.create({
-    model: 'gpt-4-turbo',
-    messages: [{ role: 'user', content: 'Hello, AKI.IO!' }],
-  });
-  console.log(response.choices[0].message.content);
-}
-
-main();
+```bash
+node llm_simple_example.js
 ```
+
+
 
 ## 📚 Documentation & Resources
 
@@ -105,9 +82,6 @@ main();
 - **Playground**: [https://aki.io/playground](https://aki.io/playground)
 - **Company & Legal**: [https://aki.io](https://aki.io) for terms, privacy, and compliance details
 
-## 🤝 Contributing
-
-We welcome contributions! Please check the `CONTRIBUTING.md` file in each client directory for guidelines on reporting issues, requesting features, or submitting pull requests.
 
 ## 📄 License
 
@@ -117,9 +91,9 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 <div align="center">
 
-**Made with ❤️ in Berlin, Germany** 【turn2fetch1】
+**Made with ❤️ in Berlin, Germany**
 
 [Website](https://aki.io) • [Docs](https://aki.io/docs/) • [Sign Up](https://aki.io/signup) • [Contact](mailto:hello@aki.io)
 
 </div>
-```
+
