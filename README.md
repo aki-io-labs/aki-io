@@ -1,5 +1,125 @@
 # AKI IO API Interfaces
 
-API interfaces to connect to AKI IO for high performance ai model services.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![GitHub repo size](https://img.shields.io/github/repo-size/aki-io-labs/aki-io)
+![GitHub stars](https://img.shields.io/github/stars/aki-io-labs/aki-io?style=social)
 
-For more info about AKI IO, please visit: https://aki.io
+> **High-performance AI model services via simple API interfaces.**  
+> Official client libraries for connecting to the [AKI.IO](https://aki.io) platform.
+
+## 🚀 Overview
+
+This repository provides official client interfaces (libraries) for seamlessly integrating with the AKI.IO platform. AKI.IO offers a user-friendly API to access advanced AI models, enabling developers to build intelligent applications without the complexity and cost of managing infrastructure.
+
+The platform is designed for business and professional use, offering enterprise-grade security, compliance, and scalable deployment.
+
+## ✨ Key Features
+
+- **Simple Integration**: Pre-built client libraries for popular languages.
+- **Access to Top AI Models**: Interface with state-of-the-art LLMs and image generation models.
+- **OpenAI Compatibility**: Easily switch from other providers with familiar endpoints.
+- **Enterprise-Grade**: Running on AIME HPC GPU cloud instances in ISO 27001 & SOC 2 Type II certified adat centers, GDPR-compliant, hosted in Europe.
+- **Secure by Design**: API keys are scoped and managed per use case for enhanced control.
+  
+## 📦 Available Client Libraries
+
+This repository contains interfaces for the following programming environments:
+
+| Language | Directory | Status |
+| :--- | :--- | :--- |
+| ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) | `/python` | ✅ Available |
+| ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black) | `/js` | ✅ Available |
+| Others | Coming Soon | 🚧 Planned |
+
+## 🏁 Getting Started
+
+Follow these steps to start using the AKI.IO API:
+
+### 1. Get Your API Key
+1. Sign up for a free account at [aki.io/signup](https://aki.io/signup) to receive **10 EUR free trial credits**.
+2. After logging in, navigate to your **User Profile** page at [aki.io/admin/user](https://aki.io/admin/user) to view your API Key.
+3. **Important**: Keep your API key secure. It's bound to your user and should not be embedded in public code.
+
+### 2. Choose Your Library
+Select the client interface that matches your development stack. Detailed guides are available in each directory's `README`.
+
+### 3. Make Your First Request
+Here’s a quick example to test your setup:
+
+
+**Python Example**
+
+```python
+# Install the library (example)
+# pip install aki-io-python
+
+from aki_io import AKIClient
+
+# Initialize the client with your API key
+client = AKIClient(api_key="YOUR_API_KEY")
+
+# Example: LLM Chat
+response = client.chat.create(
+    model="gpt-4-turbo",
+    messages=[
+        {"role": "user", "content": "Hello, AKI.IO!"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+
+**JavaScript Example**
+
+```javascript
+// Install the library (example)
+// npm install aki-io-js
+
+import { AKIClient } from 'aki-io-js';
+
+// Initialize the client
+const client = new AKIClient({ apiKey: 'YOUR_API_KEY' });
+
+// Example: LLM Chat
+async function main() {
+  const response = await client.chat.create({
+    model: 'gpt-4-turbo',
+    messages: [{ role: 'user', content: 'Hello, AKI.IO!' }],
+  });
+  console.log(response.choices[0].message.content);
+}
+
+main();
+```
+
+## 📚 Documentation & Resources
+
+- **Full API Documentation**: [https://aki.io/docs/](https://aki.io/docs/)
+    - Getting Started Guide
+    - LLM Request Parameters & Response Formats
+    - Available Models
+    - Image Generation Parameters
+    - OpenAI Compatibility Guide
+- **Platform & Features**: [https://aki.io](https://aki.io)
+- **Playground**: [https://aki.io/playground](https://aki.io/playground)
+- **Company & Legal**: [https://aki.io](https://aki.io) for terms, privacy, and compliance details
+
+## 🤝 Contributing
+
+We welcome contributions!
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+**Made with ❤️ in Berlin, Germany** 【turn2fetch1】
+
+[Website](https://aki.io) • [Docs](https://aki.io/docs/) • [Sign Up](https://aki.io/signup) • [Contact](mailto:hello@aki.io)
+
+</div>
+```
