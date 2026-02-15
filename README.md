@@ -1,4 +1,4 @@
-# AKI IO API Interfaces
+# AKI.IO API Interfaces
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![GitHub repo size](https://img.shields.io/github/repo-size/aki-io-labs/aki-io)
