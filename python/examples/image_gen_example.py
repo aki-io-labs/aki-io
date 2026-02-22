@@ -1,5 +1,3 @@
-import base64
-
 from aki_io import Aki
 
 aki = Aki(
