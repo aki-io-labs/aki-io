@@ -10,6 +10,7 @@ import asyncio
 import requests
 import time
 import json
+import re
 
 
 DEFAULT_PROGRESS_INTERVAL = 0.2
@@ -19,49 +20,17 @@ class Aki():
     """
     An interface for interacting with the AKI IO ai model hub services
 
+    Constructor
+
     Args:
-        endpoint_name (str): The name of the API endpoint.
-        api_key (str): API key for authentication.
-        session (aiohttp.ClientSession, optional): Existing session to use for requests. Defaults to None.
-        output_format (str, optional): Format for returned data like images/audio. Options: 'base64' or 'byte_string'. Defaults to 'base64'.
-        output_type (str, optional): Type of output data like "image" or "audio". Defaults to 'image'.
-        api_server (str): The base URL of the API server.
-
-    Attributes:
-        api_server (str): The base URL of the API server.
-        endpoint_name (str): The name of the specific API endpoint.
-        client_session_auth_key (str): The authentication key for the client session, obtained from do_api_login.
-        key (str): API key for authentication.
-        output_format (str): Format for returned data.
-        output_type (str): Type of output data.
-
-    API Parameters:
-        The params dictionary passed to do_api_request methods which are defined in the input configuration of each endpoint.
-        They can be e.g.:
-        
-        Text generation:
-            - prompt_input (str): The input text/prompt to send to the model
-            - chat_context (str): JSON string containing chat history and context
-            - output_format (str): Format for output. Defaults to 'base64'
-            - top_k (int): Top-k sampling parameter. Defaults to 40
-            - top_p (float): Nucleus sampling parameter between 0-1. Defaults to 0.9 
-            - temperature (float): Sampling temperature between 0-1. Defaults to 0.8
-            - max_gen_tokens (int): Maximum tokens to generate. Defaults to 1000
-
-        Image generation:
-            - prompt (str): Text prompt describing desired image
-            - height (int): Output image height in pixels
-            - width (int): Output image width in pixels 
-            - guidance (float): Classifier guidance scale. Higher values better match prompt
-            - steps (int): Number of denoising steps. Higher values = better quality
-            - seed (int): Random seed for reproducible results. -1 for random
-            - image2image_strength (float): Blend factor for img2img. 0-1, where 1 = use only condition
-
-        Text-to-speech:
-            - text (str): Text to convert to speech
-            - language (str): Language code e.g. 'en' for English
-            - voice (str): Voice ID to use for synthesis
-            - output_format (str): Audio format. Options: 'wav', 'mp3'. Default 'wav'
+        endpoint_name (str): The name of the API endpoint
+        api_key (str, optional): The api_key, register for your AKI api key at https://aki.io
+        session (aiohttp.ClientSession): Give existing session to Aki to make upcoming requests in given session. 
+            Defaults to None.
+        output_binary_format (str, optional): Output format of binary data possible options 'base64', 'byte_string'
+            Defaults to 'byte_string'.  
+        api_server (str, optional): overwrite the base URL of the AKI.IO server
+        raise_exceptions (bool, optional): Whether to exceptions are raised in case of network errors . Defaults to False.
 
     """
 
@@ -70,34 +39,19 @@ class Aki():
             endpoint_name,
             api_key=None,
             session=None,
-            output_format='base64',
-            output_type = 'image',
+            output_binary_format='base64',
             api_server='https://aki.io',
             raise_exceptions=False
         ):
         
-        """
-        Constructor
 
-        Args:
-            endpoint_name (str): The name of the API endpoint
-            api_key (str, optional): The api_key, register for your AKI api key at https://aki.io
-            session (aiohttp.ClientSession): Give existing session to Aki to make upcoming requests in given session. 
-                Defaults to None.
-            output_format (str, optional): Output format of objects like images in result dictionary of do_api_request() and do_api_request_async().
-                Defaults to 'base64'.  
-            output_type(str, optional): Output data type like "image" or "audio". Defaults to'image'.
-            api_server (str, optional): The base URL of the API server
-            raise_exceptions (bool, optional): Whether to exceptions are raised in case of network errors . Defaults to False.
-        """
         self.api_server = api_server
         self.api_server_url = api_server + "/api/"
         self.endpoint_name = endpoint_name
         self.api_key = api_key
         self.session = session
         self.client_session_auth_key = None
-        self.output_format = output_format
-        self.output_type = output_type
+        self.output_binary_format = output_binary_format
         self.raise_exceptions = raise_exceptions
         self.canceled_jobs = []
         self.progress_input_params = {} # key job_id
@@ -157,6 +111,31 @@ class Aki():
             return self.__handle_error_sync(None, 'key_validation', exception=exception)
 
 
+    @staticmethod
+    def encode_binary(binary_data, media_format='octet-stream', media_type=None):
+        media_format = media_format.lower()
+        if not media_type:
+            media_type = Aki.detect_media_type_from_media_format(media_format)
+        return f'data:{media_type}/{media_format};base64,' + base64.b64encode(binary_data).decode('utf-8')
+
+
+    @staticmethod
+    def decode_binary(base64_data):
+        if isinstance(base64_data, str):
+            if base64_data.startswith('data:'):
+                header, base64_raw_data = base64_data.split(',')
+                mime_type = re.match(r'^data:([^/]+)/([^;,]+)?;base64?', header)
+                return mime_type.group(2).lower(), base64.b64decode(base64_raw_data.encode('utf-8'))
+            else:
+                # has no data: header, unknown media type
+                binary_string = base64.b64decode(base64_data.encode('utf-8'))
+                return 'octet-stream', binary_string
+
+        if isinstance(base64_data, bytes):
+            return 'octet-stream', base64_data # already binary, can not detect media type
+
+        return None, None # unknown data type, can not decode
+
     async def do_api_request_async(
         self,
         params,
@@ -164,7 +143,6 @@ class Aki():
         progress_callback=None,
         progress_interval=DEFAULT_PROGRESS_INTERVAL,
         session=None,
-        output_format='base64'
         ):
         """
         Do an asynchronous API request with optional progress data via asynchronous or synchronous callbacks. 
@@ -259,8 +237,7 @@ class Aki():
         self,
         params,
         progress_interval=DEFAULT_PROGRESS_INTERVAL,
-        session=None,
-        output_format='base64'
+        session=None
         ):
         """Generator function to get request generator, yielding the results
 
@@ -268,7 +245,6 @@ class Aki():
             params (dict): Dictionary with parameters for the the API request.
             progress_interval (int, optional): Interval in seconds at which progress is checked. Defaults to DEFAULT_PROGRESS_INTERVAL.
             session (aiohttp.ClientSession): Give existing session to Aki API to make login request in given session. Defaults to None.
-            output_format (str, optional): Define a different output_format. Defaults to 'base64'.
 
         Yields:
             dict: Result dictionary containing job and progress results.
@@ -638,24 +614,21 @@ class Aki():
             await self.session.close()
 
 
-    def __get_data_format_from_byte_string(self, byte_string_data):
-        """
-        Check the image format of byte string data and return the format.
+    @staticmethod
+    def detect_media_type_from_media_format(media_format):
 
-        Args:
-            byte_string_data (bytes): byte string image data.
+        IMAGE_FORMATS = {'png', 'jpeg', 'webp', 'tiff', 'gif', 'bmp'}
+        AUDIO_FORMATS = {'wav', 'mp3', 'ogg', 'flac'}
 
-        Returns:
-            str: The detected image format (e.g., "PNG" or "JPG").
-        """
-        if byte_string_data.lower().startswith(b'\x89'):
-            return 'PNG'
-        if byte_string_data.lower().startswith(b'\xff\xd8'):
-            return 'JPEG'
-        else:
-            print("Couldn't read image format from_byte_string data. Image format is set to default value 'PNG'.")
-            return 'PNG'
+        if media_format:
+            media_format = media_format.lower()
 
+            if media_format in IMAGE_FORMATS:
+                return 'image'
+            if media_format in AUDIO_FORMATS:
+                return 'audio'
+
+        return 'octet-stream'
 
     @staticmethod
     def check_if_valid_base64_string(test_string):
@@ -687,7 +660,6 @@ class Aki():
         """
 
         if not Aki.__package_version:
-            import re
             from pathlib import Path
             setup_py = Path(__file__).resolve().parent.parent / 'setup.py'
             with open(setup_py, 'r') as file:                
@@ -759,7 +731,7 @@ class Aki():
         
 
     def __process_progress_result(self, progress_result):
-        """Format received progress results depending on job state and self.output_format.
+        """Format received progress results depending on job state and self.output_binary_format.
 
         Args:
             progress_result (dict): Progress result dictionary received from API server
@@ -801,8 +773,9 @@ class Aki():
         result_callback=None
         ):
         """
-        Perform an asynchronous HTTP request to the API server. Python objects and byte string params will be converted automatically to base64 string.
-        Base64 strings containing in the result will be converted to self.output_format='base64'.
+        Perform an asynchronous HTTP request to the API server. 
+        Python objects and byte string params will be converted automatically to base64 string.
+        Binary data in the result data will be converted to self.output_binary_format set in the Aki constructor.
 
         Args:
             url (str): The URL for the HTTP request.
@@ -812,28 +785,12 @@ class Aki():
         Returns:
             dict: The result from the API worker via API server.
 
-        Examples:
-
-            Example result:
-        
-            .. highlight:: python
-            .. code-block:: python
-                
-                result = {
-                    'success': True,
-                    'job_id': 'JID21',
-                    'images': ['data:image/JPEG;base64,/9j/4AA...'],
-                    'text': 'Test output...',
-                    'seed': 26262303,
-                    'prompt': 'cat',
-                    'compute_duration': 8.2,
-                    'total_duration': 47.8,
-                    'auth': 'neo07_NVIDIA A100-SXM4-40GB_0',
-                    'worker_interface_version': 'API-Worker-Interface 0.3.5'
-                }
         """
-        params = self.__convert_object_or_byte_string_params_to_base64(params)
         params = self.__serialize_json_values(params)
+        error = self.__check_params_encoded(params)
+        if error:
+            response = await self.__handle_error_async(error, 'api')
+            return response
         try:       
             method = self.session.post if do_post else self.session.get
             request_params = {'json': params} if do_post else {'params': params}
@@ -873,28 +830,11 @@ class Aki():
         Returns:
             dict: The result from the API worker via API server.
 
-        Examples:
-
-            Example result:
-        
-            .. highlight:: python
-            .. code-block:: python
-                
-                result = {
-                    'success': True,
-                    'job_id': 'JID21',
-                    'images': ['data:image/JPEG;base64,/9j/4AA...'],
-                    'text': 'Test output...',
-                    'seed': 26262303,
-                    'prompt': 'cat',
-                    'compute_duration': 8.2,
-                    'total_duration': 47.8,
-                    'auth': 'neo07_NVIDIA A100-SXM4-40GB_0',
-                    'worker_interface_version': 'API-Worker-Interface 0.3.5'
-                }
         """
-        params = self.__convert_object_or_byte_string_params_to_base64(params)
         params = self.__serialize_json_values(params)
+        error = self.__check_params_encoded(params)
+        if error:
+            return self.__handle_error_sync(error, 'api')
         try:
             method = requests.post if do_post else requests.get
             request_params = {'json': params} if do_post else {'params': params}
@@ -921,70 +861,6 @@ class Aki():
         Returns:
             dict: Dictionary with progress result of the job.
 
-        Examples:
-
-            Example progress result dictionary at start:
-
-            .. highlight:: python
-            .. code-block:: python
-
-                progress_result = {
-                    'job_id': 'JID6',
-                    'job_state': 'processing',
-                    'progress': {
-                        'progress': 0, 
-                        'queue_position': 0
-                    },
-                    'success': True
-                }
-
-            Example progress result dictionary while processing:
-
-            .. highlight:: python
-            .. code-block:: python
-
-                progress_result = {
-                    'job_id': 'JID6',
-                    'job_state': 'processing',
-                    'progress': {
-                        'job_id': 'JID6', 
-                        'progress': 50,
-                        'progress_data': {
-                            'images': ['base64-string', 'base64-string', ...]
-                            'text': 'Test outpu'
-                        },
-                        'queue_position': 0
-                    },
-                    'success': True
-                }
-
-            Example progress_result dictionaries when finished:
-
-            .. highlight:: python
-            .. code-block:: python
-
-                progress_result = {
-                    'job_id': 'JID6',
-                    'job_result': {
-                        'auth': 'worker_name',
-                        'compute_duration': 2.4,
-                        'images': ['base64-string', 'base64-string', ...]
-                        'text': 'Test outpu...',
-                        'total_duration': 2.5,
-                        'worker_interface_version': 'API-Worker-Interface 0.3.5'
-                    },
-                    'job_state': 'done',
-                    'progress': {
-                        'job_id': 'JID6',
-                        'progress': 100,
-                        'progress_data': {
-                            'images': ['base64-string', 'base64-string', ...]
-                            'text': 'Test outpu...'
-                        },
-                        'queue_position': 0
-                    },
-                    'success': True
-                }
         """
         counter = 0
         while True:
@@ -1034,72 +910,6 @@ class Aki():
         Returns:
             dict: Progress information for the job.
 
-        Examples:
-
-            Example progress_result dictionaries at start:
-
-            .. highlight:: python
-            .. code-block:: python
-
-                progress_result = {
-                    'job_id': 'JID6',
-                    'job_state': 'processing',
-                    'progress': {
-                        'progress': 0, 
-                        'queue_position': 0
-                    },
-                    'success': True
-                }
-
-            Example progress_result dictionaries while processing:
-
-            .. highlight:: python
-            .. code-block:: python
-
-                progress_result = {
-                    'job_id': 'JID6',
-                    'job_state': 'processing',
-                    'progress': {
-                        'job_id': 'JID6', 
-                        'progress': 50,
-                        'progress_data': {
-                            'info': 'infos from worker about progress',
-                            'images': 'base64-string',
-                            'text': 'Test outpu'
-                        },
-                        'queue_position': 0
-                    },
-                    'success': True
-                }
-
-            Example progress_result dictionaries when finished:
-
-            .. highlight:: python
-            .. code-block:: python
-
-                progress_result = {
-                    'job_id': 'JID6',
-                    'job_result': {
-                        'auth': 'neo07_GPU0',
-                        'compute_duration': 2.4,
-                        'images': 'data:image...',
-                        'text': 'Test outpu...',
-                        'total_duration': 2.5,
-                        'worker_interface_version': 'API-Worker-Interface 0.3.5'
-                    },
-                    'job_state': 'done',
-                    'progress': {
-                        'job_id': 'JID6',
-                        'progress': 100,
-                        'progress_data': {
-                            'info': 'infos from worker about progress',
-                            'images': 'data:image...',
-                            'text': 'Test outpu...'
-                            },
-                        'queue_position': 0
-                    },
-                    'success': True
-                }
         """
 
         url = f'{self.api_server_url}progress/{self.endpoint_name}'
@@ -1159,7 +969,7 @@ class Aki():
                 'error': str(exception) if exception else str(response) # To catch unknown network response types
             }
 
-        status_code = response.status if hasattr(response, 'status') else 500
+        status_code = response.status if hasattr(response, 'status') else 400 # else bad request
 
 
         response_json['error_code'] = status_code
@@ -1194,7 +1004,7 @@ class Aki():
                 'success': False,
                 'error': str(exception) if exception else str(response) # To catch unknown network response types
             }
-        status_code = response.status_code if hasattr(response, 'status_code') else 500
+        status_code = response.status_code if hasattr(response, 'status_code') else 400 # else bad request
         
         if self.raise_exceptions:
             self.__raise_exception(response_json, request_type, status_code)
@@ -1249,7 +1059,7 @@ class Aki():
             params (dict): Dictionary of parameters.
 
         Returns:
-            dict: Dictionary with base64-encoded parameters converted to output format defined in self.output_format.
+            dict: Dictionary with base64-encoded parameters converted to output format defined in self.output_binary_format.
         """
         params_converted = dict()
         if params and isinstance(params, dict):
@@ -1272,17 +1082,15 @@ class Aki():
             value (str): Base64 string to be converted
 
         Returns:
-            str, bytes or object: Base64 string bytes string or python object, depending on self.output_format.
+            str, bytes or object: Base64 string bytes string or python object, depending on self.output_binary_format.
         """
-        if Aki.check_if_valid_base64_string(value):
-            if self.output_format == 'byte_string':
+        if self.output_binary_format == 'byte_string':
+            if Aki.check_if_valid_base64_string(value):
                 return base64.b64decode(value.split(',')[1].encode('utf-8'))
-            else:
-                return value
         else:
             return value
 
-    def __convert_object_or_byte_string_params_to_base64(self, params):
+    def __check_params_encoded(self, params):
         """
         Convert byte string data parameters to base64 encoding in a dictionary.
 
@@ -1292,15 +1100,11 @@ class Aki():
         Returns:
             dict: Dictionary with byte string data parameters converted to base64 encoding.
         """
-        data_format = params.pop('image_format') if 'image_format' in params else 'JPEG'
-        data_format = params.pop('audio_format') if 'audio_format' in params else 'WAV'
         if params:
             for key, value in params.items():
                 if isinstance(value, bytes):
-                    if not data_format:
-                        data_format = self.__get_data_format_from_byte_string(value)
-                    params[key] = f'data:{self.output_type}/{data_format};base64,' + base64.b64encode(value).decode('utf-8')
-        return params
+                    return f"param '{key}' is in binary form, please use Aki.encode_binary(...) to set binary data"
+        return None
 
 
     def __serialize_json_values(self, params):
