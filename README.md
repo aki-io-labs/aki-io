@@ -9,9 +9,9 @@
 
 ## 🚀 Overview
 
-This repository provides official client interfaces (libraries) for seamlessly integrating with the AKI.IO platform. AKI.IO offers a user-friendly API to access advanced AI models, enabling developers to build intelligent applications without the complexity and cost of managing infrastructure.
+This repository provides official client interfaces (libraries) for seamlessly integrating with the [AKI.IO](https://aki.io) platform. AKI.IO offers a user-friendly API to access leading open-source or open-weight AI models, enabling developers to build intelligent applications without the complexity and cost of managing infrastructure.
 
-The platform is designed for business and professional use, offering enterprise-grade security, compliance, and scalable deployment.
+The platform is designed for business and professional use, offering enterprise-grade security, GDPR-compliance, scalable deployment, and transparent, token-based billing.
 
 ## ✨ Key Features
 
