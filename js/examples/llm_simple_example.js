@@ -26,7 +26,6 @@ doAPIRequest(
             console.log('\nAPI JSON response:', result);
             console.log('\nChat response:\n', result.text);
             console.log('\nGenerated Tokens:', result.num_generated_tokens);
-
         }
         else {
             console.error('API Error:', result.error_code, '-', result.error);
