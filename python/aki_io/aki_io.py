@@ -73,7 +73,8 @@ class Aki():
             output_format='base64',
             output_type = 'image',
             api_server='https://aki.io',
-            raise_exceptions=False
+            raise_exceptions=False,
+            return_tool_call_dict=False
         ):
         
         """
@@ -99,6 +100,7 @@ class Aki():
         self.output_format = output_format
         self.output_type = output_type
         self.raise_exceptions = raise_exceptions
+        self.return_tool_call_dict = return_tool_call_dict
         self.canceled_jobs = []
         self.progress_input_params = {} # key job_id
 
@@ -444,7 +446,6 @@ class Aki():
                 )
         else:
             result = self.__convert_result_params(result)
-
         return result
 
 
@@ -675,6 +676,24 @@ class Aki():
             return False
 
 
+    @staticmethod
+    def check_if_valid_json_string(test_string):
+        """
+        Check if given string is a valid json-encoded string.
+
+        Args:
+            test_string (str): The string to test.
+
+        Returns:
+            bool: True if the string is a valid json-encoded string, False otherwise.
+        """
+        try:
+            
+            _ = json.loads(tool_call)
+            return True
+        except (TypeError, json.decoder.JSONDecodeError):
+            return False
+
     __package_version = None # will be set by get_version()
 
 
@@ -774,7 +793,6 @@ class Aki():
                 progress_data = progress_result.get('job_result', {})
                 if job_state == 'canceled':
                     progress_data['job_state'] = job_state
-                progress_data['job_id'] = progress_info['job_id']
                 progress_info['success'] = progress_result.get('success')
                 progress_info['job_state'] = job_state
                 progress_info['progress'] = 100
@@ -1251,7 +1269,6 @@ class Aki():
         return f'{request_type.capitalize()} request at {self.api_server_url} failed!\n{status_code_str}'
 
 
-
     def __convert_result_params(self, params):
         """
         Converts base64-encoded parameters to byte string data in given dictionary.
@@ -1269,7 +1286,14 @@ class Aki():
                     value = [self.__convert_base64_to_desired_format(base64_string) for base64_string in value]
                 elif isinstance(value, str):
                     value = self.__convert_base64_to_desired_format(value)
-                    
+                elif isinstance(value, dict):
+                    if 'tool_calls' in value.keys() and self.return_tool_call_dict:
+                        tool_call = value.get('tool_calls')
+                        if Aki.check_if_valid_json_string(tool_call):
+                            value['tool_calls'] = json.loads(tool_call)
+                        else:
+                            print('Warning: Tool call has no valid json format!')
+
                 params_converted[key] = value
         elif params and isinstance(params, list):
             params_converted = [self.__convert_result_params(params_chunk) for params_chunk in params]
