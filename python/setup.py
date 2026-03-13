@@ -1,8 +1,10 @@
-from setuptools import setup
 
-with open("pypi_README.md", "r", encoding="utf-8") as file:
+
+with open("README.md", "r", encoding="utf-8") as file:
     long_description = file.read()
 
+print(long_description)
+from setuptools import setup
 
 setup(
     name='aki-io',
