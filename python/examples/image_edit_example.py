@@ -17,8 +17,8 @@ result = aki.do_api_request(
     {
         'prompt': 'replace astronaut with ice bear',
         'seed': -1,
-        'height': 512,
-        'width': 512,
+        'height': 1024,
+        'width': 1024,
         'image': Aki.encode_binary(input_image, 'jpeg')
     },
     progress_callback, # optional
