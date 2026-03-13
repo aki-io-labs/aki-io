@@ -8,12 +8,13 @@ from setuptools import setup
 
 setup(
     name='aki-io',
-    version='1.0.0',
+    version='1.0.2',
     author='AKI',
     author_email='hello@aki.io',
     packages=['aki_io'],
     description="AKI-IO python client interface",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     keywords=["python", "aki", "async", "api-server", "ai", "dl", "ml", "llm", "aki.io", "transformer", "diffuser"],
     install_requires=[
         'requests >= 2.31.0',

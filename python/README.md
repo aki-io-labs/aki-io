@@ -19,7 +19,6 @@ The platform is designed for business and professional use, offering enterprise-
 - **Access to Top AI Models**: Interface with state-of-the-art LLMs and image generation models.
 - **Enterprise-Grade**: Running on AIME HPC GPU cloud instances in ISO 27001 & SOC 2 Type II certified adat centers, GDPR-compliant, hosted in Europe.
 - **Secure by Design**: API keys are scoped and managed per use case for enhanced control.
-7
 
 ## 🏁 Getting Started
 
@@ -41,19 +40,4 @@ Checkout this repo and install the **aki-io** pip with following command:
 
 ```bash
 pip install aki-io
-```
-
-Change into the 'python/examples' directory and run:
-
-```bash
-python3 llm_simple_example.py
-```
-
-**JavaScript Example**
-
-Checkout this repo and change into the 'js/examples' directory and run:
-
-
-```bash
-node llm_simple_example.js
 ```
