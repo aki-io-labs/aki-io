@@ -50,7 +50,7 @@ Here’s a quick example to test your setup:
 Checkout this repo and install the **aki-io** pip with following command:
 
 ```bash
-pip install "git+https://github.com/aki-io-labs/aki-io.git#subdirectory=python"
+pip install aki-io
 ```
 
 Change into the 'python/examples' directory and run:
