@@ -3,7 +3,6 @@
     "description": "AKI.IO API PHP Client Interface",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.0",
     "keywords": ["php", "aki", "api", "ai", "llm", "image-generation", "tts", "aki.io"],
     "authors": [
         {
@@ -14,8 +13,7 @@
     "require": {
         "php": ">=8.2",
         "ext-curl": "*",
-        "ext-json": "*",
-        "symfony/http-client": "^8.0"
+        "ext-json": "*"
     },
     "suggest": {
         "symfony/http-client": "For async/parallel HTTP requests"
