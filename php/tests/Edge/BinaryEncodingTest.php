@@ -11,6 +11,13 @@ use AkiIO\Aki;
 
 class BinaryEncodingTest
 {
+    private string $apiKey;
+
+    public function __construct(string $apiKey)
+    {
+        $this->apiKey = $apiKey;
+    }
+
     public function run(): void
     {
         echo "    Testing binary encoding/decoding...\n";

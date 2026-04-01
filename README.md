@@ -81,6 +81,8 @@ php examples/llm_simple_example.php
 To run the full test suite:
 
 ```bash
+cd php/
+composer install
 AKI_API_KEY=your-key php tests/TestRunner.php
 ```
 

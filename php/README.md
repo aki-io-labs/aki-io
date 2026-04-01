@@ -106,15 +106,84 @@ $decoded = Aki::decodeBinary($result['audio']);
 file_put_contents('output.wav', $decoded[1]);
 ```
 
+### Async Requests (requires `symfony/http-client`)
+
+```bash
+composer require symfony/http-client
+```
+
+**Blocking wrapper** — simple async call that returns the final result:
+
+```php
+<?php
+use AkiIO\Aki;
+
+$aki = new Aki('llama3_8b_chat', 'your-api-key');
+
+$result = $aki->doApiRequestAwait([
+    'chat_context' => [
+        ['role' => 'user', 'content' => 'Tell me a joke']
+    ],
+], function ($progressInfo, $progressData) {
+    echo "Progress: {$progressInfo['progress']}%\n";
+});
+
+echo $result['text'];
+```
+
+**Generator-based** — full control over progress yields:
+
+```php
+<?php
+use AkiIO\Aki;
+
+$aki = new Aki('llama3_8b_chat', 'your-api-key');
+
+$generator = $aki->doApiRequestAsync([
+    'chat_context' => [
+        ['role' => 'user', 'content' => 'Tell me a joke']
+    ],
+], function ($progressInfo, $progressData) {
+    // Handle progress updates
+});
+
+foreach ($generator as $progress) {
+    // Yields progress updates as they arrive
+}
+
+$result = $generator->getReturn(); // Final result
+```
+
+**Parallel requests** — run multiple requests concurrently:
+
+```php
+<?php
+$aki1 = new Aki('llama3_8b_chat', 'your-api-key');
+$aki2 = new Aki('z_image_turbo', 'your-api-key');
+
+$gen1 = $aki1->doApiRequestAsync(['chat_context' => [...]]);
+$gen2 = $aki2->doApiRequestAsync(['prompt' => 'A sunset']);
+
+// Start both, then consume results
+foreach ($gen1 as $progress) {}
+$result1 = $gen1->getReturn();
+
+foreach ($gen2 as $progress) {}
+$result2 = $gen2->getReturn();
+```
+
 ## API Methods
 
 | Method | Description |
 |-------|-------------|
-| `doApiRequest($params, $progressCallback)` | Execute API request |
+| `doApiRequest($params, $progressCallback)` | Synchronous API request |
+| `doApiRequestAsync($params, $progressCallback)` | Async request (returns Generator) |
+| `doApiRequestAwait($params, $progressCallback)` | Blocking wrapper around async |
 | `getEndpointList($apiKey)` | Get available endpoints |
 | `getEndpointDetails($name, $apiKey)` | Get endpoint details |
 | `initApiKey($apiKey)` | Validate API key |
 | `cancelRequest($jobId)` | Cancel running request |
+| `appendProgressInputParams($jobId, $params)` | Append params to progress polling |
 
 ## Static Helpers
 
@@ -138,8 +207,7 @@ file_put_contents('output.wav', $decoded[1]);
 
 ```bash
 cd php
-
-# Run all tests (requires valid API key)
+composer install                           # install dependencies
 AKI_API_KEY=your-key php tests/TestRunner.php
 ```
 
@@ -148,6 +216,7 @@ AKI_API_KEY=your-key php tests/TestRunner.php
 See `examples/` directory for complete examples:
 - `llm_simple_example.php` - Basic LLM request
 - `llm_stream_example.php` - LLM with streaming
+- `llm_async_example.php` - Async/await LLM request
 - `image_generation_example.php` - Image generation
 - `tts_example.php` - Text-to-speech
 
@@ -156,6 +225,7 @@ See `examples/` directory for complete examples:
 - PHP 8.2+
 - ext-curl
 - ext-json
+- `symfony/http-client` (optional, for async requests)
 
 ## License
 

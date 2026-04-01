@@ -28,6 +28,7 @@ class Aki
     private bool $returnToolCallDict;
     private array $canceledJobs = [];
     private array $progressInputParams = [];
+    private ?\Symfony\Component\HttpClient\CurlHttpClient $asyncClient = null;
 
     private const DEFAULT_PROGRESS_INTERVAL = 0.2;
     private const VERSION = 'PHP AKI.IO Client 1.0.0';
@@ -87,6 +88,134 @@ class Aki
     }
 
     /**
+     * Do an asynchronous API request (generator-based streaming).
+     * Requires symfony/http-client package.
+     *
+     * @param array $params Request parameters
+     * @param callable|null $progressCallback Progress callback function
+     * @return \Generator Yields progress updates, returns final result
+     */
+    public function doApiRequestAsync(array $params, ?callable $progressCallback = null): \Generator
+    {
+        $client = $this->getAsyncClient();
+        $url = $this->apiServerUrl . 'call/' . $this->endpointName;
+
+        $params['key'] = $this->apiKey;
+        $params['wait_for_result'] = $progressCallback === null;
+        $params = $this->serializeJsonValues($params);
+
+        $response = $client->request('POST', $url, [
+            'json' => $params,
+            'timeout' => 300,
+        ]);
+
+        $statusCode = $response->getStatusCode();
+
+        if ($statusCode !== 200) {
+            $responseData = [];
+            try {
+                $responseData = $response->toArray(false);
+            } catch (\Throwable) {}
+            return $this->handleError($responseData, 'api', null, $statusCode);
+        }
+
+        $result = $response->toArray(false);
+
+        if ($progressCallback !== null && ($result['success'] ?? false)) {
+            $jobId = $result['job_id'];
+
+            // Yield initial progress
+            yield [
+                'job_id' => $jobId,
+                'progress' => 0,
+                'queue_position' => -1,
+                'estimate' => -1
+            ];
+
+            // Poll for progress
+            while (true) {
+                $progressGenerator = $this->fetchProgressAsync($jobId, $client);
+                $progressResult = null;
+                foreach ($progressGenerator as $progressResult) {
+                    yield $progressResult;
+                }
+
+                if ($progressResult === null) {
+                    usleep((int)($this->progressInterval * 1000000));
+                    continue;
+                }
+
+                [$progressInfo, $progressData] = $this->processProgress($progressResult);
+
+                $isComplete = in_array($progressInfo['job_state'] ?? '', ['done', 'canceled', 'lapsed'])
+                    && empty($progressResult['progress']);
+
+                if ($isComplete) {
+                    return $this->convertResultParams($progressData);
+                }
+
+                $progressCallback($progressInfo, $progressData);
+                usleep((int)($this->progressInterval * 1000000));
+            }
+        }
+
+        return $this->convertResultParams($result);
+    }
+
+    /**
+     * Synchronous wrapper for async request (convenience method).
+     * Requires symfony/http-client package.
+     *
+     * @param array $params Request parameters
+     * @param callable|null $progressCallback Progress callback function
+     * @return array Response data
+     */
+    public function doApiRequestAwait(array $params, ?callable $progressCallback = null): array
+    {
+        $generator = $this->doApiRequestAsync($params, $progressCallback);
+
+        foreach ($generator as $yielded) {
+            // Handle yielded values (progress updates)
+            // The actual handling is done via the progressCallback
+        }
+
+        return $generator->getReturn() ?? [];
+    }
+
+    /**
+     * Get async HTTP client (lazy initialization).
+     */
+    private function getAsyncClient(): \Symfony\Component\HttpClient\CurlHttpClient
+    {
+        if ($this->asyncClient === null) {
+            if (!class_exists(\Symfony\Component\HttpClient\CurlHttpClient::class)) {
+                throw new \RuntimeException(
+                    'Symfony HttpClient is required for async requests. Run: composer require symfony/http-client'
+                );
+            }
+            $this->asyncClient = new \Symfony\Component\HttpClient\CurlHttpClient([
+                'timeout' => 300,
+            ]);
+        }
+        return $this->asyncClient;
+    }
+
+    /**
+     * Fetch progress asynchronously.
+     */
+    private function fetchProgressAsync(string $jobId, \Symfony\Component\HttpClient\CurlHttpClient $client): \Generator
+    {
+        $params = $this->buildProgressParams($jobId);
+
+        $response = $client->request('POST', $this->apiServerUrl . 'progress/' . $this->endpointName, [
+            'json' => $params,
+            'timeout' => 30,
+        ]);
+
+        yield $response->toArray(false);
+    }
+
+    /**
      * Initialize and validate API key.
      *
      * @param string|null $apiKey API key to validate
@@ -132,7 +261,8 @@ class Aki
     /**
      * Cancel a running request.
      *
-     * @param string|null $jobId Job ID to cancel,     */
+     * @param string|null $jobId Job ID to cancel, or null to cancel all requests.
+     */
     public function cancelRequest(?string $jobId = null): void
     {
         $this->canceledJobs[] = $jobId ?? 'all';
@@ -282,7 +412,6 @@ class Aki
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
-        curl_close($ch);
 
         if ($curlError) {
             return $this->handleError(null, 'api', $curlError, 0);
@@ -298,9 +427,10 @@ class Aki
     }
 
     /**
-     * Fetch progress for a job.
+     * Build progress request parameters, merging progress input params
+     * and checking for cancellation.
      */
-    private function fetchProgress(string $jobId): array
+    private function buildProgressParams(string $jobId): array
     {
         $params = [
             'key' => $this->apiKey,
@@ -321,6 +451,15 @@ class Aki
             array_splice($this->canceledJobs, $allKey, 1);
         }
 
+        return $params;
+    }
+
+    /**
+     * Fetch progress for a job.
+     */
+    private function fetchProgress(string $jobId): array
+    {
+        $params = $this->buildProgressParams($jobId);
         return $this->fetchSync($this->apiServerUrl . 'progress/' . $this->endpointName, $params);
     }
 

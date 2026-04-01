@@ -9,6 +9,7 @@
  * 4. TTS Tests
  */
 
+require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../src/Aki.php';
 require_once __DIR__ . '/../src/functions.php';
 
@@ -43,11 +44,14 @@ class TestRunner
         // Phase 2: LLM Tests
         $this->runPhase('PHASE 2: LLM Tests', [
             'LLM/LLMSimpleTest',
+            'LLM/LLMAsyncTest',
+            'LLM/LLMStreamTest',
         ]);
 
         // Phase 3: Multimodal Tests (depends on Phase 1)
         $this->runPhase('PHASE 3: Multimodal Tests', [
             'Image/ImageEditTest',
+            'Vision/VisionTest',
         ]);
 
         // Phase 4: TTS Tests
@@ -61,6 +65,7 @@ class TestRunner
             'Edge/ErrorHandlingTest',
             'Edge/BinaryEncodingTest',
             'Edge/CancellationTest',
+            'Edge/ProgressCallbackTest',
         ]);
 
         $this->printSummary();
@@ -148,12 +153,14 @@ class TestRunner
 
 // Run if executed directly
 if (php_sapi_name() === 'cli' && basename($argv[0] ?? '') === basename(__FILE__)) {
-    $apiKey = getenv('AKI_API_KEY') ?: 'fc3a8c50-b12b-4d6a-ba07-c9f6a6c32c37';
-    
-    if (isset($argv[1])) {
-        $apiKey = $argv[1];
+    $apiKey = getenv('AKI_API_KEY') ?: $argv[1] ?? null;
+
+    if (empty($apiKey)) {
+        echo "Error: No API key provided. Set AKI_API_KEY environment variable or pass as argument.\n";
+        echo "Usage: php TestRunner.php [API_KEY]\n";
+        exit(1);
     }
-    
+
     $runner = new TestRunner($apiKey);
     $runner->run();
 }

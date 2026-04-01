@@ -4,3 +4,5 @@ __pycache__
 AGENTS.md
 CLAUDE.md
 php/PORTING_REPORT.md
+php/vendor/
+php/composer.lock
