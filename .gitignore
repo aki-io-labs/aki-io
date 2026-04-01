@@ -1,2 +1,6 @@
 __pycache__
 .egg-info
+/.claude
+AGENTS.md
+CLAUDE.md
+php/PORTING_REPORT.md

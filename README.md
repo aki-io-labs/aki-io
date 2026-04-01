@@ -29,6 +29,7 @@ This repository contains interfaces for the following programming environments:
 | :--- | :--- | :--- |
 | ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) | `/python` | ✅ Available |
 | ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black) | `/js` | ✅ Available |
+| ![PHP](https://img.shields.io/badge/PHP-777BB4?style=flat&logo=php&logoColor=white) | `/php` | ✅ Available |
 | Others | Coming Soon | 🚧 Planned |
 
 ## 🏁 Getting Started
@@ -66,6 +67,21 @@ Checkout this repo and change into the 'js/examples' directory and run:
 
 ```bash
 node llm_simple_example.js
+```
+
+**PHP Example**
+
+Checkout this repo and change into the `php/` directory, then run:
+
+```bash
+composer install
+php examples/llm_simple_example.php
+```
+
+To run the full test suite:
+
+```bash
+AKI_API_KEY=your-key php tests/TestRunner.php
 ```
 
 

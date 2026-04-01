@@ -1,0 +1,36 @@
+{
+    "name": "aki-io/aki-io-php",
+    "description": "AKI.IO API PHP Client Interface",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "keywords": ["php", "aki", "api", "ai", "llm", "image-generation", "tts", "aki.io"],
+    "authors": [
+        {
+            "name": "AKI.IO",
+            "email": "hello@aki.io"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AkiIO\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AkiIO\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:runner": "php tests/TestRunner.php"
+    }
+}
