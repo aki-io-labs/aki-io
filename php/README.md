@@ -11,16 +11,21 @@ This PHP client library provides a simple interface for integrating with the AKI
 
 ## Installation
 
-### Via Composer
+### Via Composer (recommended)
 
 ```bash
-cd php
-composer install
+composer require aki-io/aki-io
+```
+
+For async request support (optional):
+
+```bash
+composer require symfony/http-client
 ```
 
 ### Manual
 
-```bash
+```php
 require_once 'path/to/src/Aki.php';
 require_once 'path/to/src/functions.php';
 ```
