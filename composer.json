@@ -18,21 +18,9 @@
     "suggest": {
         "symfony/http-client": "For async/parallel HTTP requests"
     },
-    "require-dev": {
-        "phpunit/phpunit": "^11.0"
-    },
     "autoload": {
         "psr-4": {
-            "AkiIO\\": "src/"
+            "AkiIO\\": "php/src/"
         }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "AkiIO\\Tests\\": "tests/"
-        }
-    },
-    "scripts": {
-        "test": "phpunit",
-        "test:runner": "php tests/TestRunner.php"
     }
 }
