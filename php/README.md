@@ -177,6 +177,90 @@ foreach ($gen2 as $progress) {}
 $result2 = $gen2->getReturn();
 ```
 
+### Background Jobs
+
+PHP executes synchronously by default. For long-running tasks, dispatch the job to a background CLI worker instead of blocking the web request.
+
+**1. Web Controller (dispatch job)**
+
+```php
+<?php
+// web/index.php
+use AkiIO\Aki;
+
+$taskId = saveTaskToDB(['prompt' => 'Complex image...', 'status' => 'pending']);
+
+// Trigger background worker (non-blocking)
+exec("php worker.php {$taskId} > /dev/null &");
+
+echo json_encode(['status' => 'processing', 'task_id' => $taskId]);
+```
+
+**2. CLI Worker (process job)**
+
+Simple — block until result is ready:
+
+```php
+<?php
+// worker.php
+use AkiIO\Aki;
+
+require_once 'vendor/autoload.php';
+
+$taskId = $argv[1];
+$task = getTaskFromDB($taskId);
+
+$aki = new Aki('z_image_turbo', getenv('AKI_API_KEY'));
+
+$result = $aki->doApiRequest([
+    'prompt' => $task['prompt'],
+    'width' => 1024,
+    'height' => 1024,
+]);
+
+if ($result['success']) {
+    saveResult($taskId, $result['images']);
+    updateTaskStatus($taskId, 'completed');
+} else {
+    updateTaskStatus($taskId, 'failed', $result['error']);
+}
+```
+
+With progress tracking — log progress and support cancellation (requires `symfony/http-client`):
+
+```php
+<?php
+// worker_with_progress.php
+use AkiIO\Aki;
+
+require_once 'vendor/autoload.php';
+
+$taskId = $argv[1];
+$task = getTaskFromDB($taskId);
+
+$aki = new Aki('z_image_turbo', getenv('AKI_API_KEY'));
+
+$result = $aki->doApiRequestAwait([
+    'prompt' => $task['prompt'],
+    'width' => 1024,
+    'height' => 1024,
+], function ($progressInfo, $progressData) use ($taskId, $aki) {
+    updateTaskProgress($taskId, $progressInfo['progress']);
+
+    // Optionally cancel from outside (e.g., DB flag)
+    if (isTaskCanceled($taskId)) {
+        $aki->cancelRequest($progressInfo['job_id']);
+    }
+});
+
+if ($result['success']) {
+    saveResult($taskId, $result['images']);
+    updateTaskStatus($taskId, 'completed');
+} else {
+    updateTaskStatus($taskId, 'failed', $result['error']);
+}
+```
+
 ## API Methods
 
 | Method | Description |
